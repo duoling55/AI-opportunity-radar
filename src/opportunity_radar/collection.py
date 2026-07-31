@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -13,6 +14,8 @@ from opportunity_radar.parsing.html import DocumentRetriever
 from opportunity_radar.pipeline import _deduplicate_documents
 from opportunity_radar.sources.base import PolicySource
 from opportunity_radar.state import StateStore
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -148,6 +151,13 @@ def collect_batch(
     try:
         for source_id in config.source_ids:
             source = sources[source_id]
+            LOGGER.info(
+                "信源发现开始 source_id=%s browser_mode=%s start_date=%s end_date=%s",
+                source_id,
+                browser_mode,
+                config.start_date,
+                config.end_date,
+            )
             try:
                 if browser is not None and browser_mode == "always":
                     candidates = browser.discover(source, config.start_date, config.end_date)
@@ -171,10 +181,30 @@ def collect_batch(
                                 config.start_date,
                                 config.end_date,
                             )
-            except Exception:  # noqa: BLE001 - one source must not stop the batch
+            except Exception:
+                LOGGER.exception(
+                    "信源发现失败 source_id=%s browser_mode=%s",
+                    source_id,
+                    browser_mode,
+                )
                 report = _increment(report, "source_failures")
                 continue
 
+            if candidates:
+                LOGGER.info(
+                    "信源发现完成 source_id=%s candidates=%d",
+                    source_id,
+                    len(candidates),
+                )
+            else:
+                LOGGER.warning(
+                    "信源未发现候选 source_id=%s browser_mode=%s "
+                    "start_date=%s end_date=%s；请检查列表地址、页面选择器和日期范围",
+                    source_id,
+                    browser_mode,
+                    config.start_date,
+                    config.end_date,
+                )
             report = _increment(report, "discovered", len(candidates))
             for candidate in candidates:
                 try:
@@ -205,9 +235,21 @@ def collect_batch(
                                 config.raw_dir,
                             )
                 except PermissionError:
+                    LOGGER.exception(
+                        "信源访问受限 source_id=%s title=%r url=%s",
+                        source_id,
+                        candidate.title,
+                        candidate.detail_url,
+                    )
                     report = _increment(report, "source_failures")
                     break
-                except Exception:  # noqa: BLE001 - preserve other collected documents
+                except Exception:
+                    LOGGER.exception(
+                        "公文解析失败 source_id=%s title=%r url=%s",
+                        source_id,
+                        candidate.title,
+                        candidate.detail_url,
+                    )
                     report = _increment(report, "parse_failures")
                     continue
 

@@ -51,7 +51,11 @@ def test_registry_omits_disabled_sources() -> None:
 @pytest.mark.parametrize(
     ("source_id", "source_type", "expected_path"),
     [
-        ("miit", MiitSource, "/policy/miit.html"),
+        (
+            "miit",
+            MiitSource,
+            "/zwgk/zcwj/wjfb/tz/art/2026/art_fixture.html",
+        ),
         ("ndrc", NdrcSource, "/policy/ndrc.html"),
         ("zhejiang_huiqi", ZhejiangHuiqiSource, "/policy/zhejiang-huiqi.html"),
         ("zhejiang_eit", ZhejiangEitSource, "/policy/zhejiang-eit.html"),

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -52,6 +53,12 @@ class _Retriever:
         )
 
 
+class _EmptySource:
+    def discover(self, start: date, end: date) -> list[PolicyCandidate]:
+        del start, end
+        return []
+
+
 def _config(tmp_path: Path) -> RunConfig:
     return RunConfig(
         date(2026, 7, 1),
@@ -100,6 +107,25 @@ def test_collect_batch_round_trips_and_skips_unchanged_documents(
         tmp_path,
     )
     assert restored.content_hash == "content-v1"
+
+
+def test_collect_batch_logs_an_actionable_warning_when_discovery_is_empty(
+    caplog: pytest.LogCaptureFixture,
+    tmp_path: Path,
+) -> None:
+    caplog.set_level(logging.WARNING, logger="opportunity_radar.collection")
+
+    batch_path = collect_batch(
+        _config(tmp_path),
+        {"fixture": _EmptySource()},
+        _Retriever(),
+        browser_mode="off",
+        development_mode=True,
+    )
+
+    assert load_batch(batch_path).report.discovered == 0
+    assert "信源未发现候选 source_id=fixture" in caplog.text
+    assert "请检查列表地址、页面选择器和日期范围" in caplog.text
 
 
 @pytest.mark.parametrize("status", [401, 403, 429])

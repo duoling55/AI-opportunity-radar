@@ -149,6 +149,7 @@ opportunity-radar collect `
 ```
 
 `--dev-unverified-sources` 仅用于本地开发和适配器调试。它不会绕过允许域名、请求间隔、单并发、附件大小、验证码以及 401、403、429 停止规则。
+该开关只对 `collect` 生效，不能用于采集与分析一体化的 `run` 命令。
 
 ### 分析本地批次
 
@@ -192,6 +193,8 @@ AI-opportunity-radar/
 ## 信源与访问边界
 
 `config/sources.json` 保存采集适配器配置，`config/compliance_sources.json` 保存信源资格和访问规则。
+
+当前没有任何自动来源具备运行资格；现有信源只能在本地开发模式下调试。正式启用一个来源前，必须同时完成 `config/sources.json` 中的适配器启用配置，以及 `config/compliance_sources.json` 中的核验记录。
 
 生产或常态化运行前，应确认：
 

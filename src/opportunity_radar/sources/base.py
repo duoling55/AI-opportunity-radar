@@ -13,7 +13,18 @@ from opportunity_radar.http import OfficialHttpClient
 from opportunity_radar.models import PolicyCandidate
 
 DATE = re.compile(r"(20\d{2})[-/.年](\d{1,2})[-/.月](\d{1,2})")
-POLICY_TITLE_MARKERS = ("政策", "通知", "办法", "细则", "指南", "意见", "方案")
+POLICY_TITLE_MARKERS = (
+    "政策",
+    "通知",
+    "办法",
+    "细则",
+    "指南",
+    "意见",
+    "方案",
+    "公告",
+    "公示",
+    "规划",
+)
 
 
 def _date_from_text(text: str) -> date | None:
@@ -89,7 +100,12 @@ class GenericHtmlSource:
         found: dict[str, PolicyCandidate] = {}
         for anchor in self._listing_anchors(soup):
             href = anchor.get("href", "")
-            title = anchor.get_text(" ", strip=True)
+            title_attribute = anchor.get("title")
+            title = (
+                title_attribute.strip()
+                if isinstance(title_attribute, str) and title_attribute.strip()
+                else anchor.get_text(" ", strip=True)
+            )
             if (
                 not isinstance(href, str)
                 or not href
