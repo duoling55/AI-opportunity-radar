@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>AI 商机雷达控制台</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="radar-mark"><span></span></div>
+        <div class="brand-copy">
+          <strong>AI 商机雷达</strong>
+          <small>政策情报控制台</small>
+        </div>
+        <button
+          id="sidebar-toggle"
+          class="sidebar-toggle"
+          type="button"
+          aria-label="收起左侧菜单"
+          aria-expanded="true"
+          title="收起左侧菜单"
+        >‹</button>
+      </div>
+      <nav id="navigation" aria-label="主要功能">
+        <button class="nav-item active" data-page="sources">
+          <b>01</b><span>信源编辑</span>
+        </button>
+        <button class="nav-item" data-page="collect">
+          <b>02</b><span>发起采集</span>
+        </button>
+        <button class="nav-item" data-page="batches">
+          <b>03</b><span>结构化数据</span>
+        </button>
+        <button class="nav-item" data-page="analyze">
+          <b>04</b><span>发起分析</span>
+        </button>
+        <button class="nav-item" data-page="results">
+          <b>05</b><span>查看结果</span>
+        </button>
+      </nav>
+      <div class="privacy-note">
+        <span class="status-dot"></span>
+        服务仅监听本机
+        <small>API Key 不写入磁盘</small>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">LOCAL INTELLIGENCE WORKSPACE</p>
+          <h1 id="page-title">信源编辑</h1>
+          <p id="page-subtitle">管理政策入口、允许域名和访问节奏。</p>
+        </div>
+        <button id="refresh-all" class="ghost-button">刷新数据</button>
+      </header>
+
+      <section id="metrics" class="metric-grid" aria-label="运行概览"></section>
+      <section id="notice" class="notice hidden" role="status"></section>
+
+      <section id="page-sources" class="page active">
+        <div class="section-heading">
+          <div>
+            <h2>已登记信源</h2>
+            <p>信源 ID 连接代码适配器，不可改名；其他配置可直接编辑。</p>
+          </div>
+          <button id="save-sources" class="primary-button">保存配置</button>
+        </div>
+        <div class="table-shell">
+          <table class="source-table">
+            <thead>
+              <tr>
+                <th>启用</th>
+                <th>信源</th>
+                <th>地区</th>
+                <th>请求间隔</th>
+                <th>列表网址</th>
+                <th>允许域名</th>
+                <th>版本</th>
+              </tr>
+            </thead>
+            <tbody id="source-rows"></tbody>
+          </table>
+        </div>
+        <div id="source-pagination" class="pagination"></div>
+        <p class="field-note">
+          请求间隔单位为秒；开发阶段可设为 0。每行填写一个网址或域名。
+        </p>
+      </section>
+
+      <section id="page-collect" class="page">
+        <div class="split-layout">
+          <form id="collect-form" class="panel form-panel">
+            <div class="panel-kicker">COLLECTION</div>
+            <h2>创建本地政策批次</h2>
+            <div class="form-grid two">
+              <label>
+                开始日期
+                <input id="collect-start" type="date" required />
+              </label>
+              <label>
+                结束日期
+                <input id="collect-end" type="date" required />
+              </label>
+            </div>
+            <fieldset>
+              <legend>选择信源</legend>
+              <div id="collect-sources" class="choice-grid"></div>
+            </fieldset>
+            <div class="form-grid two">
+              <label>
+                浏览器模式
+                <select id="browser-mode">
+                  <option value="always">始终使用浏览器</option>
+                  <option value="fallback">失败后使用浏览器</option>
+                  <option value="off">不使用浏览器</option>
+                </select>
+              </label>
+              <label>
+                最多列表页
+                <input id="max-pages" type="number" min="1" max="100" value="20" />
+              </label>
+            </div>
+            <label class="check-row">
+              <input id="development-mode" type="checkbox" checked />
+              <span>开发模式：允许尚未完成合规登记的信源</span>
+            </label>
+            <label class="check-row">
+              <input id="headed-browser" type="checkbox" />
+              <span>显示浏览器窗口</span>
+            </label>
+            <button class="primary-button full" type="submit">开始采集</button>
+          </form>
+          <div class="panel">
+            <div class="section-heading compact">
+              <div>
+                <div class="panel-kicker">LIVE JOBS</div>
+                <h2>任务进度</h2>
+              </div>
+            </div>
+            <div id="collection-jobs" class="job-list"></div>
+            <div id="collection-job-pagination" class="pagination"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-batches" class="page">
+        <div class="toolbar panel">
+          <label class="grow">
+            批次
+            <select id="batch-select"></select>
+          </label>
+          <label>
+            信源
+            <select id="batch-source"><option value="">全部信源</option></select>
+          </label>
+          <label class="grow">
+            搜索
+            <input id="batch-query" type="search" placeholder="标题、文号、机构或正文" />
+          </label>
+          <button id="search-batch" class="secondary-button">筛选</button>
+        </div>
+        <div id="batch-summary" class="inline-stats"></div>
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th>发布日期</th>
+                <th>政策名称</th>
+                <th>信源</th>
+                <th>地区</th>
+                <th>发布机构</th>
+                <th>正文长度</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="batch-rows"></tbody>
+          </table>
+        </div>
+        <div id="batch-pagination" class="pagination"></div>
+      </section>
+
+      <section id="page-analyze" class="page">
+        <div class="split-layout">
+          <form id="analyze-form" class="panel form-panel">
+            <div class="panel-kicker">MODEL ANALYSIS</div>
+            <h2>从本地批次提取商机</h2>
+            <label>
+              待分析批次
+              <select id="analysis-batch"></select>
+            </label>
+            <div class="selection-counter">
+              已选择 <strong id="analysis-selected-count">0</strong> 篇公文
+            </div>
+            <label>
+              API 协议
+              <select id="llm-provider">
+                <option value="openai">OpenAI 兼容（MiMo、NVIDIA 等）</option>
+                <option value="minimax">MiniMax Anthropic 兼容</option>
+              </select>
+            </label>
+            <label>
+              Base URL
+              <input id="llm-base-url" value="https://api.xiaomimimo.com/v1" required />
+            </label>
+            <label>
+              模型名称
+              <input id="llm-model" value="mimo-v2.5" required />
+            </label>
+            <label>
+              API Key
+              <input
+                id="llm-api-key"
+                type="password"
+                autocomplete="off"
+                placeholder="留空则读取启动控制台前设置的环境变量"
+              />
+            </label>
+            <details class="prompt-editor" open>
+              <summary>
+                <span>
+                  <strong>分析提示词</strong>
+                  <small>控制模型角色、分析边界和输出要求</small>
+                </span>
+                <span class="summary-action">展开 / 收起</span>
+              </summary>
+              <div class="prompt-editor-body">
+                <label>
+                  系统提示词
+                  <textarea id="system-prompt" rows="6"></textarea>
+                </label>
+                <label>
+                  用户提示词模板
+                  <textarea id="user-prompt-template" rows="14"></textarea>
+                </label>
+                <div>
+                  <span class="field-label">可用占位符</span>
+                  <div id="prompt-placeholders" class="placeholder-list"></div>
+                </div>
+                <div class="prompt-actions">
+                  <button id="save-prompts" class="secondary-button" type="button">
+                    保存为本机默认
+                  </button>
+                  <button id="reset-prompts" class="ghost-button" type="button">
+                    恢复内置默认
+                  </button>
+                </div>
+              </div>
+            </details>
+            <label class="check-row">
+              <input id="force-analysis" type="checkbox" checked />
+              <span>强制重新分析全部公文，生成完整工作簿</span>
+            </label>
+            <p class="field-note">密钥只传给当前分析进程，不写入配置、批次或日志。</p>
+            <button class="primary-button full" type="submit">开始分析</button>
+          </form>
+          <div class="panel">
+            <div class="panel-kicker">LIVE JOBS</div>
+            <h2>任务进度</h2>
+            <div id="analysis-jobs" class="job-list"></div>
+            <div id="analysis-job-pagination" class="pagination"></div>
+          </div>
+        </div>
+        <div class="panel analysis-selection-panel">
+          <div class="section-heading compact">
+            <div>
+              <div class="panel-kicker">POLICY SELECTION</div>
+              <h2>选择本次要分析的公文</h2>
+              <p>适合选取少量样本反复调整提示词，不会自动分析整个批次。</p>
+            </div>
+            <div class="selection-actions">
+              <button id="select-analysis-page" class="secondary-button" type="button">
+                全选当前页
+              </button>
+              <button id="clear-analysis-selection" class="ghost-button" type="button">
+                清空选择
+              </button>
+            </div>
+          </div>
+          <div class="analysis-filter">
+            <input
+              id="analysis-policy-query"
+              type="search"
+              placeholder="搜索政策名称、发布机构或文号"
+            />
+          </div>
+          <div class="table-shell">
+            <table>
+              <thead>
+                <tr>
+                  <th class="check-column">选择</th>
+                  <th>发布日期</th>
+                  <th>政策名称</th>
+                  <th>信源</th>
+                  <th>发布机构</th>
+                  <th>正文长度</th>
+                </tr>
+              </thead>
+              <tbody id="analysis-policy-rows"></tbody>
+            </table>
+          </div>
+          <div id="analysis-policy-pagination" class="pagination"></div>
+        </div>
+      </section>
+
+      <section id="page-results" class="page">
+        <div class="toolbar panel">
+          <label class="grow">
+            Excel 结果
+            <select id="workbook-select"></select>
+          </label>
+          <label>
+            工作表
+            <select id="sheet-select"></select>
+          </label>
+          <label class="grow">
+            筛选结果
+            <input id="result-query" type="search" placeholder="政策、行业、地区、推荐动作" />
+          </label>
+          <button id="search-result" class="secondary-button">筛选</button>
+          <a id="download-workbook" class="primary-button link-button" href="#">下载 Excel</a>
+        </div>
+        <div id="result-report" class="inline-stats"></div>
+        <div class="table-shell result-shell">
+          <table>
+            <thead id="result-head"></thead>
+            <tbody id="result-rows"></tbody>
+          </table>
+        </div>
+        <div id="result-pagination" class="pagination"></div>
+      </section>
+    </main>
+
+    <dialog id="document-modal" class="document-modal">
+      <div class="modal-header">
+        <div>
+          <div class="panel-kicker">POLICY DETAIL</div>
+          <h2 id="modal-title">公文详情</h2>
+        </div>
+        <button id="close-document-modal" class="modal-close" type="button" aria-label="关闭">
+          ×
+        </button>
+      </div>
+      <div id="modal-content" class="modal-content"></div>
+    </dialog>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

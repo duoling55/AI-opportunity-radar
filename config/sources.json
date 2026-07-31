@@ -1,0 +1,8 @@
+[
+  {"source_id":"miit","display_name":"工业和信息化部","region":"全国","list_urls":["https://www.miit.gov.cn/gyhxxhbwjcx/"],"allowed_domains":["www.miit.gov.cn"],"request_interval_seconds":1.5,"adapter_version":"1.0.0"},
+  {"source_id":"ndrc","display_name":"国家发展改革委","region":"全国","list_urls":["https://www.ndrc.gov.cn/xxgk/wjk/index.html"],"allowed_domains":["www.ndrc.gov.cn","zfxxgk.ndrc.gov.cn"],"request_interval_seconds":1.5,"adapter_version":"1.0.0"},
+  {"source_id":"zhejiang_huiqi","display_name":"浙江省惠企政策信息平台","region":"浙江","list_urls":["https://zj87.jxt.zj.gov.cn/zjhqpt/views/policy-zw/list.html"],"allowed_domains":["zj87.jxt.zj.gov.cn"],"request_interval_seconds":2.0,"adapter_version":"1.0.0"},
+  {"source_id":"zhejiang_eit","display_name":"浙江省经济和信息化厅","region":"浙江","list_urls":["https://jxt.zj.gov.cn/"],"allowed_domains":["jxt.zj.gov.cn"],"request_interval_seconds":1.5,"adapter_version":"1.0.0"},
+  {"source_id":"jiangsu_government","display_name":"江苏省人民政府","region":"江苏","list_urls":["https://www.jiangsu.gov.cn/col/col84242/index.html"],"allowed_domains":["www.jiangsu.gov.cn"],"request_interval_seconds":1.5,"adapter_version":"1.0.0"},
+  {"source_id":"jiangsu_eit","display_name":"江苏省工业和信息化厅","region":"江苏","list_urls":["https://gxt.jiangsu.gov.cn/"],"allowed_domains":["gxt.jiangsu.gov.cn"],"request_interval_seconds":1.5,"adapter_version":"1.0.0"}
+]

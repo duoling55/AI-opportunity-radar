@@ -1,0 +1,122 @@
+[
+  {
+    "source_id": "state_council_policy_library",
+    "display_name": "国务院政策文件库",
+    "phase": "candidate",
+    "enabled": false,
+    "official_urls": [
+      "https://sousuo.www.gov.cn/zcwjk/"
+    ],
+    "data_access_mode": "public_web",
+    "data_access_modes": [
+      "public_web"
+    ],
+    "terms": "库收录已公开发布的行政法规、规章和行政规范性文件；未确认面向批量自动化的公开 API 条款。",
+    "terms_confirmed": null,
+    "registration": "unknown",
+    "registration_completed": null,
+    "authorization": "unknown",
+    "rate_limit": null,
+    "selected_data_scope": "unknown",
+    "field_permission_confirmed": null,
+    "available_fields": [
+      "标题",
+      "发布机构",
+      "文号",
+      "发布日期",
+      "分类",
+      "主题",
+      "正文",
+      "原文链接"
+    ],
+    "evidence_url": "https://sousuo.www.gov.cn/zcwjk/",
+    "verified_at": null,
+    "owner": "unassigned",
+    "review_due_at": "2026-10-27",
+    "verification_notes": "网页检索未见注册要求；自动化用途、自动化访问许可及官方限频规则待确认。",
+    "enablement_conditions": [
+      "取得或核验自动化访问许可",
+      "记录官方限频规则"
+    ]
+  },
+  {
+    "source_id": "zhejiang_open_data",
+    "display_name": "浙江·数据开放",
+    "phase": "candidate",
+    "enabled": false,
+    "official_urls": [
+      "https://data.zjzwfw.gov.cn/dopServer/",
+      "https://data.zjzwfw.gov.cn/dopServer/static/agreement/%E6%B5%99%E6%B1%9F%E7%9C%81%E6%95%B0%E6%8D%AE%E5%BC%80%E6%94%BE%E5%B9%B3%E5%8F%B0%E5%8F%97%E9%99%90%E5%BC%80%E6%94%BE%E5%8D%8F%E8%AE%AE.pdf"
+    ],
+    "data_access_mode": "restricted_dataset_api",
+    "data_access_modes": [
+      "open_dataset_api",
+      "restricted_dataset_api"
+    ],
+    "terms": "平台区分公开与受限数据；受限开放数据按协议使用。",
+    "terms_confirmed": null,
+    "registration": "per_dataset",
+    "registration_completed": null,
+    "authorization": "unknown",
+    "rate_limit": null,
+    "selected_data_scope": "unknown",
+    "field_permission_confirmed": null,
+    "available_fields": [
+      "数据集元数据",
+      "字段说明",
+      "下载/API 地址",
+      "业务字段以选定数据集为准"
+    ],
+    "evidence_url": "https://data.zjzwfw.gov.cn/dopServer/",
+    "verified_at": null,
+    "owner": "unassigned",
+    "review_due_at": "2026-10-27",
+    "verification_notes": "需选定数据集，并逐项核验注册、协议、AppKey、认证方式、接口权限及官方限频。",
+    "enablement_conditions": [
+      "选定数据集",
+      "完成注册、协议和 API 授权",
+      "记录官方限频规则"
+    ]
+  },
+  {
+    "source_id": "jiangsu_benefit_policy",
+    "display_name": "江苏优化营商环境惠企政策服务专区",
+    "phase": "candidate",
+    "enabled": false,
+    "official_urls": [
+      "https://www.jiangsu.gov.cn/col/col87049/index.html"
+    ],
+    "data_access_mode": "manual_import",
+    "data_access_modes": [
+      "public_web",
+      "manual_import"
+    ],
+    "terms": "专区集中发布惠企政策措施；未发现公开批量 API 或自动化使用条款。",
+    "terms_confirmed": null,
+    "registration": "unknown",
+    "registration_completed": null,
+    "authorization": "unknown",
+    "rate_limit": null,
+    "selected_data_scope": "unknown",
+    "field_permission_confirmed": null,
+    "available_fields": [
+      "标题",
+      "发布日期",
+      "发布机关",
+      "正文",
+      "附件",
+      "原文链接",
+      "页面披露的申报信息"
+    ],
+    "evidence_url": "https://www.jiangsu.gov.cn/col/col87049/index.html",
+    "verified_at": null,
+    "owner": "unassigned",
+    "review_due_at": "2026-10-27",
+    "verification_notes": "浏览政策页未见注册要求；自动化访问许可、接口授权和官方限频待确认。未核验前仅允许人工导入官方链接或 PDF。",
+    "enablement_conditions": [
+      "取得自动化访问许可",
+      "取得接口授权",
+      "记录官方限频规则"
+    ]
+  }
+]
