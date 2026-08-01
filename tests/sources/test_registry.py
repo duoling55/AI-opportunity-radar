@@ -57,7 +57,6 @@ def test_registry_omits_disabled_sources() -> None:
             "/zwgk/zcwj/wjfb/tz/art/2026/art_fixture.html",
         ),
         ("ndrc", NdrcSource, "/policy/ndrc.html"),
-        ("zhejiang_huiqi", ZhejiangHuiqiSource, "/policy/zhejiang-huiqi.html"),
         ("zhejiang_eit", ZhejiangEitSource, "/policy/zhejiang-eit.html"),
         ("jiangsu_government", JiangsuGovernmentSource, "/policy/jiangsu-government.html"),
         ("jiangsu_eit", JiangsuEitSource, "/policy/jiangsu-eit.html"),

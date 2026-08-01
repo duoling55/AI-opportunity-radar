@@ -6,6 +6,7 @@ const state = {
   currentWorkbook: null,
   prompts: null,
   jobs: [],
+  jobLogOpen: {},
   analysisDocuments: [],
   analysisSelection: new Set(),
   pagination: {
@@ -87,10 +88,89 @@ function formatSize(value) {
   return `${(value / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function selectedOptionLabel(select) {
+  const option = select.options[select.selectedIndex];
+  return option ? option.textContent.trim() : "请选择";
+}
+
+function closeCustomSelect(select) {
+  const custom = select.nextElementSibling;
+  if (!custom || !custom.classList.contains("custom-select")) return;
+  custom.classList.remove("open");
+  custom.querySelector(".custom-select-trigger").setAttribute("aria-expanded", "false");
+}
+
+function syncCustomSelect(select) {
+  const custom = select.nextElementSibling;
+  if (!custom || !custom.classList.contains("custom-select")) return;
+  const trigger = custom.querySelector(".custom-select-trigger");
+  const menu = custom.querySelector(".custom-select-menu");
+  trigger.textContent = selectedOptionLabel(select);
+  trigger.disabled = select.disabled;
+  menu.innerHTML = [...select.options]
+    .map(
+      (option, index) => `
+        <button class="custom-select-option" type="button" role="option"
+          data-index="${index}" aria-selected="${option.selected ? "true" : "false"}">
+          ${escapeHtml(option.textContent)}
+        </button>`,
+    )
+    .join("");
+  menu.querySelectorAll(".custom-select-option").forEach((optionButton) => {
+    optionButton.addEventListener("click", () => {
+      select.selectedIndex = Number(optionButton.dataset.index);
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      syncCustomSelect(select);
+      closeCustomSelect(select);
+      trigger.focus();
+    });
+  });
+}
+
+function enhanceSelect(select) {
+  if (select.dataset.customSelect === "true") {
+    syncCustomSelect(select);
+    return;
+  }
+  select.dataset.customSelect = "true";
+  select.classList.add("native-select-hidden");
+  const custom = document.createElement("div");
+  custom.className = "custom-select";
+  custom.innerHTML = `
+    <button class="custom-select-trigger" type="button" aria-expanded="false">
+      ${escapeHtml(selectedOptionLabel(select))}
+    </button>
+    <div class="custom-select-menu" role="listbox"></div>`;
+  select.insertAdjacentElement("afterend", custom);
+  const trigger = custom.querySelector(".custom-select-trigger");
+  trigger.addEventListener("click", () => {
+    const willOpen = !custom.classList.contains("open");
+    document.querySelectorAll("select.native-select-hidden").forEach(closeCustomSelect);
+    custom.classList.toggle("open", willOpen);
+    trigger.setAttribute("aria-expanded", String(willOpen));
+  });
+  trigger.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeCustomSelect(select);
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      custom.classList.add("open");
+      trigger.setAttribute("aria-expanded", "true");
+      custom.querySelector(".custom-select-option")?.focus();
+    }
+  });
+  select.addEventListener("change", () => syncCustomSelect(select));
+  syncCustomSelect(select);
+}
+
+function enhanceSelects(root = document) {
+  root.querySelectorAll("select").forEach(enhanceSelect);
+}
+
 function selectOptions(select, items, label, value = "name") {
   select.innerHTML = items
     .map((item) => `<option value="${escapeHtml(item[value])}">${escapeHtml(label(item))}</option>`)
     .join("");
+  syncCustomSelect(select);
 }
 
 function paginated(items, key) {
@@ -139,6 +219,7 @@ function renderPagination(containerId, key, totalItems, onChange) {
     state.pagination[key] = 1;
     onChange();
   });
+  enhanceSelects(container);
   container.querySelectorAll("button[data-page]").forEach((button) => {
     button.addEventListener("click", () => {
       state.pagination[key] = Number(button.dataset.page);
@@ -179,6 +260,7 @@ function setPage(page) {
   document.querySelector("#page-title").textContent = pages[page][0];
   document.querySelector("#page-subtitle").textContent = pages[page][1];
   if (page === "batches") loadSelectedBatch();
+  if (page === "analyze") refreshAnalysisPage();
   if (page === "results") loadSelectedWorkbook();
 }
 
@@ -292,8 +374,15 @@ function jobMarkup(job) {
     success: "已完成",
     warning: "完成但有错误",
     failed: "任务失败",
+    stopped_gracefully: "已停止",
+    force_stopped: "已强制停止",
+    already_stopped: "已停止",
   };
   const report = job.report;
+  const defaultOpen = ["running", "warning", "failed"].includes(job.status);
+  const logOpen = Object.hasOwn(state.jobLogOpen, job.job_id)
+    ? state.jobLogOpen[job.job_id]
+    : defaultOpen;
   const reportMarkup = report
     ? `<div class="job-summary">
         <span>进入分析 ${report.changed || 0}</span>
@@ -304,16 +393,23 @@ function jobMarkup(job) {
         </span>
       </div>`
     : "";
+  const stopButton =
+    job.status === "running"
+      ? `<button class="danger-button stop-job-button" data-job-id="${escapeHtml(job.job_id)}">
+           停止采集
+         </button>`
+      : "";
+  const statusLabel = labels[job.status] || job.status;
   return `
     <article class="job">
       <header>
         <span>${escapeHtml(job.label)}</span>
-        <span class="job-status ${job.status}">${labels[job.status]}</span>
+        <span class="job-status ${job.status}">${statusLabel}</span>
       </header>
       <small>${formatTime(job.started_at)}</small>
+      ${stopButton}
       ${reportMarkup}
-      <details class="job-log" ${job.status === "running" || job.status === "warning" ||
-        job.status === "failed" ? "open" : ""}>
+      <details class="job-log" data-job-id="${escapeHtml(job.job_id)}" ${logOpen ? "open" : ""}>
         <summary>查看详细日志（${formatSize(job.log_size || 0)}）</summary>
         <pre>${escapeHtml(job.log || "等待任务输出……")}</pre>
       </details>
@@ -328,6 +424,26 @@ async function loadJobs() {
   renderJobs();
 }
 
+async function stopJob(jobId) {
+  try {
+    const result = await api("/api/stop-job", {
+      method: "POST",
+      body: JSON.stringify({ job_id: jobId }),
+    });
+    if (result.status === "stopped_gracefully") {
+      notify("采集任务已优雅停止，浏览器和资源已安全释放。");
+    } else if (result.status === "force_stopped") {
+      notify("采集任务已强制停止（优雅停止超时）。");
+    } else {
+      notify("采集任务已停止。");
+    }
+    await loadJobs();
+    await loadSummary();
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
 function renderJobs() {
   const collectionJobs = state.jobs.filter((job) => job.label.startsWith("采集"));
   const analysisJobs = state.jobs.filter((job) => job.label.startsWith("分析"));
@@ -338,6 +454,16 @@ function renderJobs() {
     '<div class="empty-state">暂无采集任务</div>';
   document.querySelector("#analysis-jobs").innerHTML =
     analysisPage.items.map(jobMarkup).join("") || '<div class="empty-state">暂无分析任务</div>';
+  document.querySelectorAll(".job-log").forEach((details) => {
+    details.addEventListener("toggle", () => {
+      state.jobLogOpen[details.dataset.jobId] = details.open;
+    });
+  });
+  document.querySelectorAll(".stop-job-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      stopJob(button.dataset.jobId);
+    });
+  });
   renderPagination(
     "collection-job-pagination",
     "collectionJobs",
@@ -396,6 +522,7 @@ function renderBatchDocuments() {
       .map((item) => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`)
       .join("");
   sourceSelect.value = batch.source_ids.includes(currentSource) ? currentSource : "";
+  syncCustomSelect(sourceSelect);
   const page = paginated(batch.documents, "batch");
   document.querySelector("#batch-rows").innerHTML =
     page.items
@@ -456,6 +583,13 @@ async function loadAnalysisDocuments() {
   state.analysisSelection = new Set();
   state.pagination.analysis = 1;
   document.querySelector("#analysis-policy-query").value = "";
+  // 从 localStorage 加载 LLM 配置
+  const savedBaseUrl = window.localStorage.getItem("radar-llm-base-url");
+  const savedModel = window.localStorage.getItem("radar-llm-model");
+  const savedProvider = window.localStorage.getItem("radar-llm-provider");
+  if (savedBaseUrl) document.querySelector("#llm-base-url").value = savedBaseUrl;
+  if (savedModel) document.querySelector("#llm-model").value = savedModel;
+  if (savedProvider) document.querySelector("#llm-provider").value = savedProvider;
   renderAnalysisDocuments();
 }
 
@@ -533,13 +667,22 @@ async function startAnalysis(event) {
   if (!state.analysisSelection.size) {
     throw new Error("请至少选择一篇公文进行分析。");
   }
+  // 保存到 localStorage
+  const baseUrl = document.querySelector("#llm-base-url").value.trim();
+  const model = document.querySelector("#llm-model").value.trim();
+  const provider = document.querySelector("#llm-provider").value;
+  window.localStorage.setItem("radar-llm-base-url", baseUrl);
+  window.localStorage.setItem("radar-llm-model", model);
+  window.localStorage.setItem("radar-llm-provider", provider);
+  // API Key 不存储，每次手动输入
+
   await api("/api/analyze", {
     method: "POST",
     body: JSON.stringify({
       batch_name: document.querySelector("#analysis-batch").value,
-      provider: document.querySelector("#llm-provider").value,
-      base_url: document.querySelector("#llm-base-url").value.trim(),
-      model: document.querySelector("#llm-model").value.trim(),
+      provider: provider,
+      base_url: baseUrl,
+      model: model,
       api_key: document.querySelector("#llm-api-key").value.trim(),
       system_prompt: document.querySelector("#system-prompt").value.trim(),
       user_prompt_template: document.querySelector("#user-prompt-template").value.trim(),
@@ -547,7 +690,6 @@ async function startAnalysis(event) {
       force: document.querySelector("#force-analysis").checked,
     }),
   });
-  document.querySelector("#llm-api-key").value = "";
   notify(`已启动 ${state.analysisSelection.size} 篇公文的分析任务，API Key 未写入磁盘。`);
   await loadJobs();
   await loadSummary();
@@ -649,6 +791,7 @@ async function loadSelectedWorkbook(resetSheet = false) {
     (item) => item.name,
   );
   document.querySelector("#sheet-select").value = workbook.selected_sheet;
+  syncCustomSelect(document.querySelector("#sheet-select"));
   const visibleHeaders = workbook.headers.filter(
     (header) =>
       !["免责声明", "政策原文依据", "依据位置", "行业营销开场白"].includes(header),
@@ -702,6 +845,15 @@ async function refreshAll() {
   }
 }
 
+async function refreshAnalysisPage() {
+  try {
+    await Promise.all([loadSummary(), loadJobs()]);
+    await loadBatches();
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
 document.querySelector("#navigation").addEventListener("click", (event) => {
   const button = event.target.closest(".nav-item");
   if (button) setPage(button.dataset.page);
@@ -742,6 +894,16 @@ document.querySelector("#analysis-policy-query").addEventListener("input", () =>
   state.pagination.analysis = 1;
   renderAnalysisDocuments();
 });
+// 实时保存 LLM 配置到 localStorage
+document.querySelector("#llm-base-url").addEventListener("input", (event) => {
+  window.localStorage.setItem("radar-llm-base-url", event.target.value.trim());
+});
+document.querySelector("#llm-model").addEventListener("input", (event) => {
+  window.localStorage.setItem("radar-llm-model", event.target.value.trim());
+});
+document.querySelector("#llm-provider").addEventListener("change", (event) => {
+  window.localStorage.setItem("radar-llm-provider", event.target.value);
+});
 document
   .querySelector("#select-analysis-page")
   .addEventListener("click", selectCurrentAnalysisPage);
@@ -762,6 +924,10 @@ document.querySelector("#sidebar-toggle").addEventListener("click", () => {
   toggle.title = collapsed ? "展开左侧菜单" : "收起左侧菜单";
   window.localStorage.setItem("radar-sidebar-collapsed", String(collapsed));
 });
+document.addEventListener("click", (event) => {
+  if (event.target.closest(".custom-select")) return;
+  document.querySelectorAll("select.native-select-hidden").forEach(closeCustomSelect);
+});
 
 document.querySelector("#collect-start").value = localDate(-30);
 document.querySelector("#collect-end").value = localDate(0);
@@ -773,6 +939,7 @@ if (window.localStorage.getItem("radar-sidebar-collapsed") === "true") {
   toggle.title = "展开左侧菜单";
 }
 
+enhanceSelects();
 refreshAll();
 window.setInterval(async () => {
   try {

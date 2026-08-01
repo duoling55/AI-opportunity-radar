@@ -7,6 +7,7 @@
   --ink: #1d2d3d;
   --muted: #6b7c8f;
   --line: #dfe7ef;
+  --focus-ring: rgba(8, 126, 139, 0.18);
   --canvas: #f5f7fa;
   --paper: #ffffff;
   --danger: #b42318;
@@ -429,14 +430,156 @@ textarea {
   color: var(--ink);
   background: white;
   outline: none;
-  transition: border-color 120ms ease, box-shadow 120ms ease;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+select {
+  appearance: none;
+  padding-right: 38px;
+  background-color: white;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #53677a 50%),
+    linear-gradient(135deg, #53677a 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 12px) 50%;
+  background-repeat: no-repeat;
+  background-size: 6px 6px, 6px 6px;
+  cursor: pointer;
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: #9db0c4;
 }
 
 input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--teal);
-  box-shadow: 0 0 0 3px rgba(8, 126, 139, 0.12);
+  background-color: #fbffff;
+  box-shadow:
+    0 0 0 3px var(--focus-ring),
+    0 1px 2px rgba(16, 42, 67, 0.08);
+}
+
+select:focus {
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--teal) 50%),
+    linear-gradient(135deg, var(--teal) 50%, transparent 50%);
+}
+
+.native-select-hidden {
+  display: none;
+}
+
+.custom-select {
+  position: relative;
+  width: 100%;
+}
+
+.custom-select-trigger {
+  position: relative;
+  width: 100%;
+  min-height: 41px;
+  padding: 10px 38px 10px 11px;
+  border: 1px solid #cbd6e2;
+  border-radius: 8px;
+  color: var(--ink);
+  background: white;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.custom-select-trigger::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #53677a;
+  border-bottom: 2px solid #53677a;
+  transform: translateY(-65%) rotate(45deg);
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.custom-select-trigger:hover {
+  border-color: #9db0c4;
+}
+
+.custom-select.open .custom-select-trigger,
+.custom-select-trigger:focus {
+  border-color: var(--teal);
+  background-color: #fbffff;
+  box-shadow:
+    0 0 0 3px var(--focus-ring),
+    0 1px 2px rgba(16, 42, 67, 0.08);
+}
+
+.custom-select.open .custom-select-trigger::after,
+.custom-select-trigger:focus::after {
+  border-color: var(--teal);
+}
+
+.custom-select.open .custom-select-trigger::after {
+  transform: translateY(-25%) rotate(225deg);
+}
+
+.custom-select-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: none;
+  max-height: 240px;
+  padding: 5px;
+  border: 1px solid #b8c8d8;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 14px 32px rgba(16, 42, 67, 0.16);
+  overflow-y: auto;
+}
+
+.custom-select.open .custom-select-menu {
+  display: grid;
+  gap: 2px;
+}
+
+.custom-select-option {
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--ink);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.custom-select-option:hover,
+.custom-select-option:focus {
+  color: #075e67;
+  background: #edf9f9;
+  outline: none;
+}
+
+.custom-select-option[aria-selected="true"] {
+  color: var(--teal);
+  background: var(--teal-light);
+  font-weight: 700;
 }
 
 input[type="checkbox"] {
@@ -686,8 +829,22 @@ legend {
 .pagination select {
   width: auto;
   height: 32px;
-  padding: 4px 27px 4px 8px;
+  padding: 4px 30px 4px 9px;
   font-size: 12px;
+}
+
+.pagination .custom-select {
+  width: auto;
+}
+
+.pagination .custom-select-trigger {
+  min-height: 32px;
+  padding: 4px 30px 4px 9px;
+  font-size: 12px;
+}
+
+.pagination .custom-select-menu {
+  min-width: 92px;
 }
 
 .stat-pill {
@@ -880,6 +1037,25 @@ legend {
 
 .job-status.warning {
   color: #a45b00;
+}
+
+.danger-button {
+  color: white;
+  background: var(--danger);
+  box-shadow: 0 4px 14px rgba(180, 35, 24, 0.18);
+}
+
+.danger-button:hover {
+  background: #911b12;
+}
+
+.stop-job-button {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 7px;
+  border: 0;
+  cursor: pointer;
+  transition: 150ms ease;
 }
 
 .result-shell {
