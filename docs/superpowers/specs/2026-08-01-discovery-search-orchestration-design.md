@@ -1,18 +1,18 @@
 # 自动信源发现 - 搜索任务执行（编排器）设计
 
 > 所属：FR-15 自动信源发现（P0 新增）
-> 关联 spec：[[02 门户截图OCR]] · [[03 自动合规核查]] · [[04 重要性评分]] · [[05 06页面与信源交互]]
+> 关联 spec：[[02 门户直接抓取]] · [[03 自动合规核查]] · [[04 重要性评分]] · [[05 06页面与信源交互]]
 > 上游：FR-05 知识库管理（关键词来源）、FR-01 信源管理（Source 模型与状态机）
 
 ## 1. 目的与范围
 
-本 spec 是 FR-15 自动信源发现的**编排核心**。它读取知识库关键词与政府门户种子，驱动门户浏览与截图 OCR（Spec 2），识别政策栏目 URL 并预填信源元数据，对每个候选调用合规核查（Spec 3）与重要性评分（Spec 4），产出候选信源清单与发现报告。
+本 spec 是 FR-15 自动信源发现的**编排核心**。它读取知识库关键词与政府门户种子，驱动门户直接抓取（Spec 2），识别政策栏目 URL 并预填信源元数据，对每个候选调用合规核查（Spec 3）与重要性评分（Spec 4），产出候选信源清单与发现报告。
 
 **纳入**：搜索任务编排、关键词与门户种子加载、候选信源预填与落库、发现报告生成、CLI 子命令与异步任务接入。
 
-**不纳入**：截图 OCR 本身（Spec 2）、合规核查判定（Spec 3）、评分计算（Spec 4）、前端页面与提升流程（Spec 5）。本 spec 只定义对它们的调用契约。
+**不纳入**：门户直接抓取本身（Spec 2）、合规核查判定（Spec 3）、评分计算（Spec 4）、前端页面与提升流程（Spec 5）。本 spec 只定义对它们的调用契约。
 
-**搜索方式（D9）**：不使用搜索引擎 API；采用政府门户直接访问 + 浏览器截图 + OCR，模拟人工浏览，规避反爬检测。
+**搜索方式（D9，偏离见 Spec 2）**：不使用搜索引擎 API；采用政府门户直接抓取网页内容 + 反爬对策（HTTP 优先、Playwright 渲染回退、稳健请求策略），不使用截图 OCR。详见 Spec 2。
 
 **合规边界**：仅访问公开页面；遇验证码/登录即停止该门户并记录；遵守限频与 robots.txt；不绕过任何访问控制；未核验信源绝不进入 FR-02 采集可选列表。
 
@@ -25,12 +25,12 @@
                       展示 / 审核 / 提升
         ┌──────────────────────────────────────┐
         │   Spec 1: 搜索任务执行（编排器）        │
-        │   关键词->门户浏览->候选->核查->评分->报告  │
+        │   关键词->门户抓取->候选->核查->评分->报告  │
         └──┬─────────────┬─────────────────┬──┘
            │调用          │调用              │调用
    ┌───────▼──────┐ ┌────▼─────────┐ ┌──────▼──────┐
    │ Spec 2       │ │ Spec 3       │ │ Spec 4      │
-   │ 门户截图OCR  │ │ 自动合规核查  │ │ 重要性评分   │
+   │ 门户直接抓取  │ │ 自动合规核查  │ │ 重要性评分   │
    └──────────────┘ └──────────────┘ └─────────────┘
 ```
 
@@ -52,8 +52,8 @@
 
 ## 5. 输入输出
 
-- **输入**：知识库标签选择（默认全部，可勾选子集）+ 政府门户种子范围（`config/discovery_portals.json`，限定 `*.gov.cn` 及省级政府门户）+ 搜索模式（截图 OCR）
-- **输出**：候选信源清单（写入 `config/compliance_sources.json`，`origin=discovery`、`phase=candidate`、`enabled=false`）+ 发现报告（`data/discovery/{job_id}-report.json`，含关键词、命中域名、样例政策、截图路径）
+- **输入**：知识库标签选择（默认全部，可勾选子集）+ 政府门户种子范围（`config/discovery_portals.json`，限定 `*.gov.cn` 及省级政府门户）+ 搜索模式（直接抓取）
+- **输出**：候选信源清单（写入 `config/compliance_sources.json`，`origin=discovery`、`phase=candidate`、`enabled=false`）+ 发现报告（`data/discovery/{job_id}-report.json`，含关键词、命中域名、样例政策、HTML 快照路径）
 
 ## 6. 数据模型与接口
 
@@ -74,8 +74,8 @@
 | `discovered_at` | `date` | 发现日期 |
 | `portal_seed_id` | `str` | 来源门户种子 ID |
 | `admin_level` | `Literal["国家","省","市"]` | 行政层级（取自门户种子，供 Spec 4 评分） |
-| `sample_policies` | `list[{title, url, screenshot_path, matched_keywords}]` | 样例政策（≤5 条） |
-| `screenshots` | `list[str]` | 截图文件路径 |
+| `sample_policies` | `list[{title, url, matched_keywords}]` | 样例政策（≤5 条） |
+| `snapshots` | `list[str]` | HTML 快照文件路径 |
 | `check_result` | `Literal["pass","needs_attention","not_recommended"]` | Spec 3 核查结论 |
 | `check_details` | `object` | Spec 3 七项核查明细 |
 | `recommendation` | `Literal["建议启用","需人工关注","不建议"]` | Spec 3 启用建议 |
@@ -130,10 +130,10 @@ class KeywordSource(Protocol):
 
 ```python
 class DiscoveryOrchestrator:
-    def __init__(self, scanner: PortalScanner, checker: ComplianceChecker,
+    def __init__(self, crawler: PortalCrawler, checker: ComplianceChecker,
                  scorer: ImportanceScorer, keyword_source: KeywordSource): ...
     def run(self, keyword_tags: list[str] | None, portal_ids: list[str] | None,
-            mode: str = "screenshot_ocr") -> DiscoveryReport: ...
+            mode: str = "direct_crawl") -> DiscoveryReport: ...
 ```
 
 三个依赖以构造参数注入，便于单测 mock（对齐项目 pytest + pytest-httpx 模式）。
@@ -143,7 +143,7 @@ class DiscoveryOrchestrator:
 `cli.py` `_parser()` 新增子命令：
 
 ```
-opportunity-radar search-sources [--keywords all|tag1,tag2] [--portals all|portal_id] [--mode screenshot-ocr]
+opportunity-radar search-sources [--keywords all|tag1,tag2] [--portals all|portal_id] [--mode direct-crawl]
 ```
 
 UI 经 `POST /api/discovery/search`（Spec 5）调 `_start_job()`（`ui_server.py` 第 358-394 行）启动该子进程；前端复用 `/api/jobs` 轮询进度（`app.js` 第 777-784 行）。
@@ -154,10 +154,10 @@ UI 经 `POST /api/discovery/search`（Spec 5）调 `_start_job()`（`ui_server.p
 1. 读取关键词集合（KeywordSource.get_search_keywords()，按 keyword_tags 过滤）
 2. 加载门户种子（config/discovery_portals.json，按 portal_ids 过滤）
 3. 对每个门户：
-   a. 调 PortalScanner.scan(entry_url)（Spec 2）
-   b. 受限（PortalRestricted）-> 记录 errors，停止该门户，不深入
-   c. 取 ScanResult.policy_items（标题 + URL + OCR 校验）
-4. 关键词匹配：对 ScanResult.policy_items 的标题/OCR 文本与关键词集合匹配，筛选出命中的政策条目
+   a. 调 PortalCrawler.crawl(entry_url)（Spec 2）
+   b. 受限（CrawlResult.restricted=True）-> 记录 errors，停止该门户，不深入
+   c. 取 CrawlResult.policy_items（标题 + URL）与 text_content
+4. 关键词匹配：对 CrawlResult.policy_items 标题与 text_content 与关键词集合匹配，筛选出命中的政策条目
 5. 候选生成：每个被扫描的门户栏目页（entry_url）若含 ≥1 条命中政策，即生成一个候选信源；list_url = 该栏目页 URL；预填 display_name、allowed_domains、样例政策（命中条目，≤5）、命中关键词、admin_level（取自门户种子）
    > P0 范围内 entry_url 直接指向政策栏目列表页；从门户首页索引递归跟进子栏目列表的发现留待后续增强。
 6. 对每个候选：
@@ -187,15 +187,15 @@ retired
 ## 10. 验收标准
 
 1. 可选择知识库标签（默认全部）发起搜索任务，结果限定政府域名（`*.gov.cn`）。
-2. 采用截图 OCR 方式（Spec 2）提取政府门户内容，遇验证码/登录即停止该门户并记录于报告。
+2. 采用直接抓取方式（Spec 2，HTTP 优先 + Playwright 回退）提取政府门户内容，遇验证码/登录/跨域即停止该门户并记录于报告。
 3. 发现的信源写入 `compliance_sources.json`，`origin=discovery`、`phase=candidate`、`enabled=false`，不被采集任务选中。
 4. 每个候选带 Spec 3 核查报告（7 项 + 启用建议）与 Spec 4 评分（6 维度 + 总分 + 优先级 + 要素）。
-5. 发现报告含关键词、命中域名、样例政策、截图路径，可查可导出。
+5. 发现报告含关键词、命中域名、样例政策、HTML 快照路径，可查可导出。
 6. 搜索任务经 `_start_job()` 异步执行，前端可轮询进度；单门户失败不中断整批。
 7. `FallbackKeywordSource` 可在 FR-05 未落地时独立驱动搜索，单测可 mock 三个子能力。
 
 ## 11. 依赖与关联
 
-- **依赖**：Spec 2（PortalScanner）、Spec 3（ComplianceChecker）、Spec 4（ImportanceScorer）、FR-05（KeywordSource，暂由 Fallback 替代）。
+- **依赖**：Spec 2（PortalCrawler）、Spec 3（ComplianceChecker）、Spec 4（ImportanceScorer）、FR-05（KeywordSource，暂由 Fallback 替代）。
 - **被依赖**：Spec 5（前端消费候选与报告）。
 - **关联**：FR-01（Source 模型与状态机）、FR-02（采集门控，由 Spec 5 落地）。

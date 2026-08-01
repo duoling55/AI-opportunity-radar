@@ -1,7 +1,7 @@
 # 自动信源发现 - 自动合规核查设计
 
 > 所属：FR-15 自动信源发现（P0 新增）
-> 关联 spec：[[01 搜索任务执行]] · [[02 门户截图OCR]] · [[04 重要性评分]] · [[05 06页面与信源交互]]
+> 关联 spec：[[01 搜索任务执行]] · [[02 门户直接抓取]] · [[04 重要性评分]] · [[05 06页面与信源交互]]
 > 上游：FR-01 合规状态机（compliance.py ComplianceSource）、NFR-04 采集合规
 
 ## 1. 目的与范围
@@ -10,7 +10,7 @@
 
 **纳入**：7 项被动核查（域名归属/可访问性/登录/验证码/robots/限频线索/栏目结构）、`check_result`/`check_details`/`recommendation` 判定。
 
-**不纳入**：搜索编排（Spec 1）、截图 OCR（Spec 2）、评分（Spec 4）、前端展示与人工确认（Spec 5）。本 spec 只产出 `ComplianceReport`。
+**不纳入**：搜索编排（Spec 1）、门户直接抓取（Spec 2）、评分（Spec 4）、前端展示与人工确认（Spec 5）。本 spec 只产出 `ComplianceReport`。
 
 **合规边界（强制）**：仅被动检测，不绕过任何访问控制。不提交表单、不模拟登录、不尝试验证码、不轮换指纹/代理。验证码或登录触发即标记并停止深入。
 
@@ -25,7 +25,7 @@
 
 ## 4. 输入输出
 
-- **输入**：发现信源（`url`、`domain`、`sample_policies`、Spec 2 的 `ScanResult` 受限信息）
+- **输入**：发现信源（`url`、`domain`、`sample_policies`、Spec 2 的 `CrawlResult` 受限信息）
 - **输出**：`ComplianceReport`
 
 | 字段 | 类型 | 说明 |
@@ -74,7 +74,7 @@
 
 ```python
 class ComplianceChecker:
-    def check(self, source: CandidateSource, scan_result: ScanResult | None = None) -> ComplianceReport: ...
+    def check(self, source: CandidateSource, crawl_result: CrawlResult | None = None) -> ComplianceReport: ...
 ```
 
 `ComplianceChecker` 内部用 `httpx`（复用 `OfficialHttpClient`，`http.py`）做 HEAD/GET 与 robots 读取；HTTP 调用须带超时与重试限制（对齐全局规则：超时、重试、降级）。
