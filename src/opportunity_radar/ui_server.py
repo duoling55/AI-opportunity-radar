@@ -48,6 +48,7 @@ class UiJob:
     process: subprocess.Popen[str]
     log_path: Path
     started_at: datetime
+    pipe_path: Path | None = None  # 用于发送控制消息的命名管道
 
 
 _JOBS: list[UiJob] = []
@@ -359,9 +360,15 @@ def _start_job(label: str, arguments: list[str], environment: dict[str, str]) ->
     JOB_DIRECTORY.mkdir(parents=True, exist_ok=True)
     job_id = datetime.now(UTC).strftime("%Y%m%d-%H%M%S-%f")
     log_path = JOB_DIRECTORY / f"{job_id}.log"
+    pipe_dir = JOB_DIRECTORY / "pipes"
+    pipe_dir.mkdir(parents=True, exist_ok=True)
+    pipe_path = pipe_dir / f"{job_id}.pipe"
+
     creation_flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
     environment = environment.copy()
     environment["PYTHONUNBUFFERED"] = "1"
+    environment["OPPORTUNITY_RADAR_JOB_PIPE"] = str(pipe_path)  # 传递给子进程用于监听停止消息
+
     log_handle = log_path.open("w", encoding="utf-8")
     try:
         safe_metadata = {
@@ -388,10 +395,76 @@ def _start_job(label: str, arguments: list[str], environment: dict[str, str]) ->
         )
     finally:
         log_handle.close()
-    job = UiJob(job_id, label, process, log_path, datetime.now(UTC))
+    job = UiJob(job_id, label, process, log_path, datetime.now(UTC), pipe_path)
     with _JOBS_LOCK:
         _JOBS.append(job)
     return job
+
+
+def _stop_job(job_id: str) -> dict[str, object]:
+    """停止指定的采集或分析任务，通过消息通信优雅停止。
+
+    优先通过命名管道发送 STOP 消息，让子进程优雅关闭浏览器和资源；
+    如果 5 秒内未退出，则强制终止进程树。
+    """
+    with _JOBS_LOCK:
+        job = next((j for j in _JOBS if j.job_id == job_id), None)
+        if not job:
+            raise FileNotFoundError(f"任务不存在：{job_id}")
+        if job.process.poll() is not None:
+            return {"job_id": job_id, "status": "already_stopped", "return_code": job.process.poll()}
+
+        # 尝试通过管道发送优雅停止消息
+        stopped_gracefully = False
+        if job.pipe_path and job.pipe_path.exists():
+            try:
+                # 非阻塞写入管道发送停止消息
+                pipe_fd = os.open(str(job.pipe_path), os.O_WRONLY | os.O_NONBLOCK)
+                try:
+                    os.write(pipe_fd, b"STOP\n")
+                    stopped_gracefully = True
+                finally:
+                    os.close(pipe_fd)
+            except (OSError, IOError) as e:
+                LOGGER.warning("管道消息发送失败：%s", e)
+
+        # 等待最多 5 秒让进程优雅退出
+        if stopped_gracefully:
+            try:
+                return_code = job.process.wait(timeout=5)
+                with _JOBS_LOCK:
+                    if job in _JOBS:
+                        _JOBS.remove(job)
+                return {"job_id": job_id, "status": "stopped_gracefully", "return_code": return_code}
+            except subprocess.TimeoutExpired:
+                pass  # 超时后继续强制终止
+
+        # 强制终止进程树（包括 Playwright 浏览器子进程）
+        try:
+            if os.name == "nt":
+                # Windows: 使用 taskkill 终止进程树
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(job.process.pid)],
+                    capture_output=True,
+                    timeout=5,
+                )
+            else:
+                # Unix: 发送 SIGTERM 然后 SIGKILL
+                import signal
+                job.process.terminate()
+                try:
+                    job.process.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    job.process.kill()
+                    job.process.wait(timeout=3)
+        except Exception as e:
+            LOGGER.warning("停止任务时遇到异常：%s", e)
+
+        # 从活动列表中移除
+        with _JOBS_LOCK:
+            if job in _JOBS:
+                _JOBS.remove(job)
+        return {"job_id": job_id, "status": "force_stopped", "return_code": job.process.poll()}
 
 
 def _report_from_job_log(log: str) -> dict[str, Any] | None:
@@ -734,6 +807,11 @@ class RadarRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(_start_collection(payload), HTTPStatus.ACCEPTED)
             elif path == "/api/analyze":
                 self._send_json(_start_analysis(payload), HTTPStatus.ACCEPTED)
+            elif path == "/api/stop-job":
+                job_id = payload.get("job_id")
+                if not job_id:
+                    raise ValueError("job_id 不能为空")
+                self._send_json(_stop_job(str(job_id)))
             else:
                 self._send_json({"error": "接口不存在"}, HTTPStatus.NOT_FOUND)
         except (

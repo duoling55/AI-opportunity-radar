@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import logging
+import os
+import select
+import signal
 import time
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
+
+LOGGER = logging.getLogger(__name__)
 
 from opportunity_radar.models import PolicyCandidate, PolicyDocument
 from opportunity_radar.normalization import content_hash, make_policy_id, normalize_text
@@ -51,6 +57,7 @@ class PlaywrightCollector:
     """Visible-browser collector for rendered official pages.
 
     It never handles login or CAPTCHA and stops a source on explicit access restriction.
+    支持通过命名管道接收停止消息，实现优雅关闭。
     """
 
     def __init__(
@@ -69,6 +76,53 @@ class PlaywrightCollector:
         self._browser: Any = None
         self._context: Any = None
         self._page: Any = None
+        self._stop_requested = False
+        self._pipe_fd: int | None = None
+        self._setup_pipe_listener()
+
+    def _setup_pipe_listener(self) -> None:
+        """设置命名管道监听，接收停止消息。"""
+        pipe_path = os.environ.get("OPPORTUNITY_RADAR_JOB_PIPE")
+        if not pipe_path:
+            return
+        try:
+            # Unix: 创建 FIFO 命名管道
+            if os.name != "nt":
+                pipe_file = Path(pipe_path)
+                if not pipe_file.exists():
+                    os.mkfifo(str(pipe_file))
+                # 非阻塞打开管道用于读取
+                self._pipe_fd = os.open(pipe_path, os.O_RDONLY | os.O_NONBLOCK)
+        except (OSError, IOError) as e:
+            LOGGER.warning("管道监听设置失败：%s", e)
+
+    def _check_stop_signal(self) -> bool:
+        """检查是否收到停止信号。"""
+        if self._stop_requested:
+            return True
+        if self._pipe_fd is not None:
+            try:
+                # 非阻塞检查管道是否有数据
+                if os.name != "nt":
+                    ready, _, _ = select.select([self._pipe_fd], [], [], 0)
+                    if ready:
+                        data = os.read(self._pipe_fd, 1024)
+                        if b"STOP" in data:
+                            LOGGER.info("收到停止信号，开始优雅关闭...")
+                            self._stop_requested = True
+                            return True
+            except (OSError, IOError):
+                pass
+        return False
+
+    def _graceful_shutdown(self) -> None:
+        """优雅关闭浏览器和资源。"""
+        LOGGER.info("开始优雅关闭 PlaywrightCollector...")
+        self.close()
+        LOGGER.info("PlaywrightCollector 已关闭")
+        # 发送 SIGTERM 给父进程，通知退出
+        if os.name != "nt":
+            os.kill(os.getpid(), signal.SIGTERM)
 
     def _ensure_started(self) -> None:
         if self._page is not None:
@@ -117,9 +171,15 @@ class PlaywrightCollector:
             raise TypeError("browser collection requires GenericHtmlSource")
         found: dict[str, PolicyCandidate] = {}
         for list_url in source.config.list_urls:
+            if self._check_stop_signal():
+                LOGGER.info("采集停止信号已触发，退出 discover")
+                break
             html = self._navigate(list_url, source)
             seen_pages: set[str] = set()
             for _ in range(self.max_pages):
+                if self._check_stop_signal():
+                    LOGGER.info("采集停止信号已触发，退出分页循环")
+                    break
                 page_fingerprint = content_hash(self._page.url + html)
                 if page_fingerprint in seen_pages:
                     break
