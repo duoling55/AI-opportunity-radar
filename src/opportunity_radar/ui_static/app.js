@@ -88,10 +88,89 @@ function formatSize(value) {
   return `${(value / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function selectedOptionLabel(select) {
+  const option = select.options[select.selectedIndex];
+  return option ? option.textContent.trim() : "请选择";
+}
+
+function closeCustomSelect(select) {
+  const custom = select.nextElementSibling;
+  if (!custom || !custom.classList.contains("custom-select")) return;
+  custom.classList.remove("open");
+  custom.querySelector(".custom-select-trigger").setAttribute("aria-expanded", "false");
+}
+
+function syncCustomSelect(select) {
+  const custom = select.nextElementSibling;
+  if (!custom || !custom.classList.contains("custom-select")) return;
+  const trigger = custom.querySelector(".custom-select-trigger");
+  const menu = custom.querySelector(".custom-select-menu");
+  trigger.textContent = selectedOptionLabel(select);
+  trigger.disabled = select.disabled;
+  menu.innerHTML = [...select.options]
+    .map(
+      (option, index) => `
+        <button class="custom-select-option" type="button" role="option"
+          data-index="${index}" aria-selected="${option.selected ? "true" : "false"}">
+          ${escapeHtml(option.textContent)}
+        </button>`,
+    )
+    .join("");
+  menu.querySelectorAll(".custom-select-option").forEach((optionButton) => {
+    optionButton.addEventListener("click", () => {
+      select.selectedIndex = Number(optionButton.dataset.index);
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      syncCustomSelect(select);
+      closeCustomSelect(select);
+      trigger.focus();
+    });
+  });
+}
+
+function enhanceSelect(select) {
+  if (select.dataset.customSelect === "true") {
+    syncCustomSelect(select);
+    return;
+  }
+  select.dataset.customSelect = "true";
+  select.classList.add("native-select-hidden");
+  const custom = document.createElement("div");
+  custom.className = "custom-select";
+  custom.innerHTML = `
+    <button class="custom-select-trigger" type="button" aria-expanded="false">
+      ${escapeHtml(selectedOptionLabel(select))}
+    </button>
+    <div class="custom-select-menu" role="listbox"></div>`;
+  select.insertAdjacentElement("afterend", custom);
+  const trigger = custom.querySelector(".custom-select-trigger");
+  trigger.addEventListener("click", () => {
+    const willOpen = !custom.classList.contains("open");
+    document.querySelectorAll("select.native-select-hidden").forEach(closeCustomSelect);
+    custom.classList.toggle("open", willOpen);
+    trigger.setAttribute("aria-expanded", String(willOpen));
+  });
+  trigger.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeCustomSelect(select);
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      custom.classList.add("open");
+      trigger.setAttribute("aria-expanded", "true");
+      custom.querySelector(".custom-select-option")?.focus();
+    }
+  });
+  select.addEventListener("change", () => syncCustomSelect(select));
+  syncCustomSelect(select);
+}
+
+function enhanceSelects(root = document) {
+  root.querySelectorAll("select").forEach(enhanceSelect);
+}
+
 function selectOptions(select, items, label, value = "name") {
   select.innerHTML = items
     .map((item) => `<option value="${escapeHtml(item[value])}">${escapeHtml(label(item))}</option>`)
     .join("");
+  syncCustomSelect(select);
 }
 
 function paginated(items, key) {
@@ -140,6 +219,7 @@ function renderPagination(containerId, key, totalItems, onChange) {
     state.pagination[key] = 1;
     onChange();
   });
+  enhanceSelects(container);
   container.querySelectorAll("button[data-page]").forEach((button) => {
     button.addEventListener("click", () => {
       state.pagination[key] = Number(button.dataset.page);
@@ -406,6 +486,7 @@ function renderBatchDocuments() {
       .map((item) => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`)
       .join("");
   sourceSelect.value = batch.source_ids.includes(currentSource) ? currentSource : "";
+  syncCustomSelect(sourceSelect);
   const page = paginated(batch.documents, "batch");
   document.querySelector("#batch-rows").innerHTML =
     page.items
@@ -659,6 +740,7 @@ async function loadSelectedWorkbook(resetSheet = false) {
     (item) => item.name,
   );
   document.querySelector("#sheet-select").value = workbook.selected_sheet;
+  syncCustomSelect(document.querySelector("#sheet-select"));
   const visibleHeaders = workbook.headers.filter(
     (header) =>
       !["免责声明", "政策原文依据", "依据位置", "行业营销开场白"].includes(header),
@@ -781,6 +863,10 @@ document.querySelector("#sidebar-toggle").addEventListener("click", () => {
   toggle.title = collapsed ? "展开左侧菜单" : "收起左侧菜单";
   window.localStorage.setItem("radar-sidebar-collapsed", String(collapsed));
 });
+document.addEventListener("click", (event) => {
+  if (event.target.closest(".custom-select")) return;
+  document.querySelectorAll("select.native-select-hidden").forEach(closeCustomSelect);
+});
 
 document.querySelector("#collect-start").value = localDate(-30);
 document.querySelector("#collect-end").value = localDate(0);
@@ -792,6 +878,7 @@ if (window.localStorage.getItem("radar-sidebar-collapsed") === "true") {
   toggle.title = "展开左侧菜单";
 }
 
+enhanceSelects();
 refreshAll();
 window.setInterval(async () => {
   try {
