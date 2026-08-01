@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import mimetypes
 import os
 import re
@@ -30,6 +31,8 @@ from opportunity_radar.config import SourceConfig, load_sources
 from opportunity_radar.diagnostics import safe_url
 from opportunity_radar.discovery.service import DiscoveryService
 from opportunity_radar.sources.registry import SOURCE_TYPES
+
+LOGGER = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIRECTORY = Path(__file__).with_name("ui_static")
@@ -441,7 +444,7 @@ def _stop_job(job_id: str) -> dict[str, object]:
                     stopped_gracefully = True
                 finally:
                     os.close(pipe_fd)
-            except (OSError, IOError) as e:
+            except OSError as e:
                 LOGGER.warning("管道消息发送失败：%s", e)
 
         # 等待最多 5 秒让进程优雅退出
@@ -463,17 +466,17 @@ def _stop_job(job_id: str) -> dict[str, object]:
                     ["taskkill", "/F", "/T", "/PID", str(job.process.pid)],
                     capture_output=True,
                     timeout=5,
+                    check=False,
                 )
             else:
                 # Unix: 发送 SIGTERM 然后 SIGKILL
-                import signal
                 job.process.terminate()
                 try:
                     job.process.wait(timeout=3)
                 except subprocess.TimeoutExpired:
                     job.process.kill()
                     job.process.wait(timeout=3)
-        except Exception as e:
+        except (OSError, subprocess.SubprocessError) as e:
             LOGGER.warning("停止任务时遇到异常：%s", e)
 
         # 从活动列表中移除
