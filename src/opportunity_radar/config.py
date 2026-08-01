@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
-from opportunity_radar.compliance import ComplianceAuditSnapshot
+from opportunity_radar.compliance import ORIGINS, ComplianceAuditSnapshot
 
 
 @dataclass(frozen=True)
@@ -25,6 +25,8 @@ class SourceConfig:
             raise ValueError("enabled must be a JSON boolean")
         if not isinstance(self.adapter_version, str) or not self.adapter_version.strip():
             raise ValueError("adapter_version must be a nonempty string")
+        if self.origin not in ORIGINS:
+            raise ValueError(f"origin must be one of {sorted(ORIGINS)}")
 
 
 @dataclass(frozen=True)

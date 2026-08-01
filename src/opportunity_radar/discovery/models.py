@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class PolicyItem(BaseModel):
@@ -23,6 +23,8 @@ class CrawlResult(BaseModel):
 
 
 class CheckDetails(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     domain_owner: str  # "gov" | "other"
     accessibility: dict
     login_required: bool
@@ -39,6 +41,8 @@ class ComplianceReport(BaseModel):
 
 
 class ScoreBreakdownItem(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     dimension: str
     score: int
     max: int
@@ -52,12 +56,16 @@ class ScoreResult(BaseModel):
 
 
 class SamplePolicy(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     title: str
     url: str
     matched_keywords: list[str]
 
 
 class DiscoveryMeta(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     keywords: list[str]
     discovered_at: date
     portal_seed_id: str

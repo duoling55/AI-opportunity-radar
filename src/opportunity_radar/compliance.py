@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 from opportunity_radar.discovery.models import DiscoveryMeta
 
 PHASES = frozenset({"candidate", "verified", "retired"})
+ORIGINS = frozenset({"manual", "discovery"})
 REGISTRATION_STATUSES = frozenset(
     {"unknown", "not_required", "per_dataset", "required", "completed"}
 )
@@ -159,6 +160,8 @@ class ComplianceSource:
         _require_string(self.display_name, "display_name")
         if self.phase not in PHASES:
             raise ValueError(f"phase must be one of {sorted(PHASES)}")
+        if self.origin not in ORIGINS:
+            raise ValueError(f"origin must be one of {sorted(ORIGINS)}")
         if type(self.enabled) is not bool:
             raise ValueError("enabled must be a JSON boolean")
         _require_string(self.terms, "terms", allow_unknown=self.phase != "verified")
