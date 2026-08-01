@@ -71,6 +71,16 @@ def test_list_candidates_dedup_keeps_latest(tmp_path) -> None:
     assert cands[0]["discovery"]["priority_score"] == 99
 
 
+def test_list_candidates_excludes_verified_and_retired(tmp_path) -> None:
+    verified = _candidate_record(source_id="v", phase="verified")
+    retired = _candidate_record(source_id="r", phase="retired")
+    cand = _candidate_record(source_id="c", phase="candidate")
+    comp, srcs = _write(tmp_path, [verified, retired, cand])
+    svc = DiscoveryService(compliance_path=str(comp), sources_path=str(srcs))
+    cands = svc.list_candidates()
+    assert [c["source_id"] for c in cands] == ["c"]
+
+
 def test_promote_moves_to_verified_and_syncs_sources(tmp_path) -> None:
     comp, srcs = _write(tmp_path, [_candidate_record()])
     svc = DiscoveryService(compliance_path=str(comp), sources_path=str(srcs))

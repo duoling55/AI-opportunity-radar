@@ -24,10 +24,13 @@ class DiscoveryService:
     # -- 读 --
 
     def list_candidates(self) -> list[dict]:
-        """返回 origin=discovery 的候选，按 source_id 去重保留最新一条。"""
+        """返回 origin=discovery 且 phase=candidate 的候选，按 source_id 去重保留最新一条。"""
         latest: dict[str, dict] = {}
         for record in self._read(self._comp):
-            if record.get("origin") == "discovery":
+            if (
+                record.get("origin") == "discovery"
+                and record.get("phase") == "candidate"
+            ):
                 latest[record["source_id"]] = record
         return list(latest.values())
 
