@@ -374,6 +374,9 @@ function jobMarkup(job) {
     success: "已完成",
     warning: "完成但有错误",
     failed: "任务失败",
+    stopped_gracefully: "已停止",
+    force_stopped: "已强制停止",
+    already_stopped: "已停止",
   };
   const report = job.report;
   const defaultOpen = ["running", "warning", "failed"].includes(job.status);
@@ -390,13 +393,21 @@ function jobMarkup(job) {
         </span>
       </div>`
     : "";
+  const stopButton =
+    job.status === "running"
+      ? `<button class="danger-button stop-job-button" data-job-id="${escapeHtml(job.job_id)}">
+           停止采集
+         </button>`
+      : "";
+  const statusLabel = labels[job.status] || job.status;
   return `
     <article class="job">
       <header>
         <span>${escapeHtml(job.label)}</span>
-        <span class="job-status ${job.status}">${labels[job.status]}</span>
+        <span class="job-status ${job.status}">${statusLabel}</span>
       </header>
       <small>${formatTime(job.started_at)}</small>
+      ${stopButton}
       ${reportMarkup}
       <details class="job-log" data-job-id="${escapeHtml(job.job_id)}" ${logOpen ? "open" : ""}>
         <summary>查看详细日志（${formatSize(job.log_size || 0)}）</summary>
@@ -413,6 +424,26 @@ async function loadJobs() {
   renderJobs();
 }
 
+async function stopJob(jobId) {
+  try {
+    const result = await api("/api/stop-job", {
+      method: "POST",
+      body: JSON.stringify({ job_id: jobId }),
+    });
+    if (result.status === "stopped_gracefully") {
+      notify("采集任务已优雅停止，浏览器和资源已安全释放。");
+    } else if (result.status === "force_stopped") {
+      notify("采集任务已强制停止（优雅停止超时）。");
+    } else {
+      notify("采集任务已停止。");
+    }
+    await loadJobs();
+    await loadSummary();
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
 function renderJobs() {
   const collectionJobs = state.jobs.filter((job) => job.label.startsWith("采集"));
   const analysisJobs = state.jobs.filter((job) => job.label.startsWith("分析"));
@@ -426,6 +457,11 @@ function renderJobs() {
   document.querySelectorAll(".job-log").forEach((details) => {
     details.addEventListener("toggle", () => {
       state.jobLogOpen[details.dataset.jobId] = details.open;
+    });
+  });
+  document.querySelectorAll(".stop-job-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      stopJob(button.dataset.jobId);
     });
   });
   renderPagination(

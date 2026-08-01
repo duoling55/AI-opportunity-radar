@@ -1039,6 +1039,25 @@ legend {
   color: #a45b00;
 }
 
+.danger-button {
+  color: white;
+  background: var(--danger);
+  box-shadow: 0 4px 14px rgba(180, 35, 24, 0.18);
+}
+
+.danger-button:hover {
+  background: #911b12;
+}
+
+.stop-job-button {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 7px;
+  border: 0;
+  cursor: pointer;
+  transition: 150ms ease;
+}
+
 .result-shell {
   max-height: 620px;
 }
