@@ -148,7 +148,9 @@ class OpenAICompatibleAnalyzer:
                     )
                 response.raise_for_status()
                 content = response.json()["choices"][0]["message"]["content"]
-                analysis = PolicyAnalysis.model_validate(json.loads(content))
+                # Extract JSON from potential markdown wrappers
+                json_content = _extract_json_from_text(content)
+                analysis = PolicyAnalysis.model_validate(json.loads(json_content))
                 validated = validate_analysis(
                     analysis,
                     valid_codes,
@@ -194,6 +196,24 @@ class OpenAICompatibleAnalyzer:
                 )
                 raise
         raise AssertionError("analysis retry loop exhausted")
+
+
+def _extract_json_from_text(text: str) -> str:
+    """Extract JSON from text that may contain markdown code blocks."""
+    stripped = text.strip()
+    # Try direct parse first
+    if stripped.startswith("{"):
+        return stripped
+    # Extract from markdown code blocks
+    json_match = re.search(r"```(?:json)?\s*({.*?})\s*```", stripped, re.DOTALL)
+    if json_match:
+        return json_match.group(1)
+    # Fallback: find first { to last }
+    start = stripped.find("{")
+    end = stripped.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return stripped[start : end + 1]
+    return stripped
 
 
 class MiniMaxAnthropicAnalyzer:
@@ -279,7 +299,9 @@ class MiniMaxAnthropicAnalyzer:
                     for block in response.json()["content"]
                     if block["type"] == "text"
                 )
-                analysis = PolicyAnalysis.model_validate(json.loads(content))
+                # Extract JSON from potential markdown wrappers
+                json_content = _extract_json_from_text(content)
+                analysis = PolicyAnalysis.model_validate(json.loads(json_content))
                 validated = validate_analysis(
                     analysis,
                     valid_codes,
