@@ -1,6 +1,7 @@
 import json
 from unittest.mock import MagicMock
 
+from opportunity_radar.compliance import load_compliance_sources
 from opportunity_radar.discovery.models import (
     CheckDetails,
     ComplianceReport,
@@ -28,7 +29,7 @@ def _score(total=85):
     return ScoreResult(priority_score=total, priority_level="高" if total >= 80 else "中", score_breakdown=[])
 
 
-def test_orchestrator_writes_candidate_and_report(httpx_mock, tmp_path, monkeypatch):
+def test_orchestrator_writes_candidate_and_report(tmp_path, monkeypatch):
     from opportunity_radar.discovery.models import PolicyItem
     portal = [{"portal_id": "gov", "display_name": "国务院", "region": "国家",
                "entry_url": "https://www.gov.cn/zc/index.html", "admin_level": "国家", "gov_domain": "www.gov.cn"}]
@@ -67,3 +68,34 @@ def test_orchestrator_restricted_portal_recorded_no_candidate(tmp_path, monkeypa
     assert report.candidates == []
     assert report.stats["restricted_stopped"] == 1
     assert report.errors[0]["reason"] == "captcha"
+
+
+def test_orchestrator_candidate_loadable_by_compliance(tmp_path, monkeypatch):
+    """编排器产出的最小候选记录（8 字段 + discovery）可被 load_compliance_sources 加载。"""
+    from opportunity_radar.discovery.models import PolicyItem
+
+    portal = [{"portal_id": "gov", "display_name": "国务院", "region": "国家",
+               "entry_url": "https://www.gov.cn/zc/index.html", "admin_level": "国家", "gov_domain": "www.gov.cn"}]
+    monkeypatch.setattr("opportunity_radar.discovery.orchestrator.load_portal_seeds", lambda: portal)
+
+    crawler = MagicMock()
+    crawler.crawl.return_value = _crawl_result(
+        items=[PolicyItem(title="设备更新通知", url="https://www.gov.cn/p/1")])
+    checker = MagicMock(); checker.check.return_value = _report()
+    scorer = MagicMock(); scorer.score.return_value = _score(95)
+    kws = MagicMock(); kws.get_search_keywords.return_value = []
+
+    comp_path = tmp_path / "compliance.json"; comp_path.write_text("[]")
+    orch = DiscoveryOrchestrator(crawler, checker, scorer, kws,
+                                 compliance_path=str(comp_path), report_dir=str(tmp_path / "reports"))
+    orch.run(keyword_tags=None, portal_ids=None)
+
+    sources = load_compliance_sources(comp_path)
+    assert "gov" in sources
+    src = sources["gov"]
+    assert src.origin == "discovery"
+    assert src.phase == "candidate"
+    assert src.enabled is False
+    assert src.discovery is not None
+    assert src.discovery.priority_score == 95
+    assert src.discovery.portal_seed_id == "gov"

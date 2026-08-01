@@ -139,17 +139,17 @@ class ComplianceSource:
     display_name: str
     phase: str
     enabled: bool
-    terms: str
+    terms: str | None
     terms_confirmed: bool | None
     registration: str
     registration_completed: bool | None
     authorization: str
     rate_limit: RateLimitPolicy | None
-    selected_data_scope: str
+    selected_data_scope: str | None
     field_permission_confirmed: bool | None
-    evidence_url: str
+    evidence_url: str | None
     verified_at: date | None
-    review_due_at: date
+    review_due_at: date | None
     owner: str
     available_fields: tuple[str, ...]
     origin: str = "manual"  # manual | discovery
@@ -164,7 +164,8 @@ class ComplianceSource:
             raise ValueError(f"origin must be one of {sorted(ORIGINS)}")
         if type(self.enabled) is not bool:
             raise ValueError("enabled must be a JSON boolean")
-        _require_string(self.terms, "terms", allow_unknown=self.phase != "verified")
+        if self.terms is not None:
+            _require_string(self.terms, "terms", allow_unknown=self.phase != "verified")
         _require_optional_exact_bool(self.terms_confirmed, "terms_confirmed")
         if self.registration not in REGISTRATION_STATUSES:
             raise ValueError(
@@ -181,35 +182,46 @@ class ComplianceSource:
             self.rate_limit, RateLimitPolicy
         ):
             raise ValueError("rate_limit must be a structured policy or null")
-        _require_string(
-            self.selected_data_scope,
-            "selected_data_scope",
-            allow_unknown=self.phase != "verified",
-        )
+        if self.selected_data_scope is not None:
+            _require_string(
+                self.selected_data_scope,
+                "selected_data_scope",
+                allow_unknown=self.phase != "verified",
+            )
         _require_optional_exact_bool(
             self.field_permission_confirmed, "field_permission_confirmed"
         )
-        _require_https_url(self.evidence_url, "evidence_url")
+        if self.evidence_url is not None:
+            _require_https_url(self.evidence_url, "evidence_url")
         _require_string(self.owner, "owner", allow_unknown=self.phase != "verified")
         for field in self.available_fields:
             _require_string(field, "available_fields")
 
         if self.verified_at is not None and not isinstance(self.verified_at, date):
             raise TypeError("verified_at must be a date or null")
-        if not isinstance(self.review_due_at, date):
-            raise TypeError("review_due_at must be a date")
-        if self.verified_at is not None:
-            if self.review_due_at <= self.verified_at:
-                raise ValueError("review_due_at must be later than verified_at")
-            if self.review_due_at > self.verified_at + timedelta(days=90):
-                raise ValueError(
-                    "review_due_at must be no later than 90 days after verified_at"
-                )
+        if self.review_due_at is not None:
+            if not isinstance(self.review_due_at, date):
+                raise TypeError("review_due_at must be a date or null")
+            if self.verified_at is not None:
+                if self.review_due_at <= self.verified_at:
+                    raise ValueError("review_due_at must be later than verified_at")
+                if self.review_due_at > self.verified_at + timedelta(days=90):
+                    raise ValueError(
+                        "review_due_at must be no later than 90 days after verified_at"
+                    )
 
         if self.phase == "verified":
             self._validate_verified_dimensions()
 
     def _validate_verified_dimensions(self) -> None:
+        if self.terms is None:
+            raise ValueError("terms must be confirmed for phase=verified")
+        if self.selected_data_scope is None:
+            raise ValueError("selected_data_scope must be confirmed for phase=verified")
+        if self.evidence_url is None:
+            raise ValueError("evidence_url must be set for phase=verified")
+        if self.review_due_at is None:
+            raise ValueError("review_due_at must be set for phase=verified")
         if not self.enabled:
             raise ValueError("enabled must be true for phase=verified")
         if self.terms_confirmed is not True:
@@ -296,18 +308,19 @@ def _parse_source(item: object) -> ComplianceSource:
         if type(item["enabled"]) is not bool:
             raise ValueError("enabled must be a JSON boolean")
         terms_confirmed = _require_optional_exact_bool(
-            item["terms_confirmed"], "terms_confirmed"
+            item.get("terms_confirmed"), "terms_confirmed"
         )
         registration_completed = _require_optional_exact_bool(
-            item["registration_completed"], "registration_completed"
+            item.get("registration_completed"), "registration_completed"
         )
         field_permission_confirmed = _require_optional_exact_bool(
-            item["field_permission_confirmed"], "field_permission_confirmed"
+            item.get("field_permission_confirmed"), "field_permission_confirmed"
         )
-        verified_at = _require_date(item["verified_at"], "verified_at", optional=True)
-        review_due_at = _require_date(item["review_due_at"], "review_due_at")
-        assert isinstance(review_due_at, date)
-        available_fields = item["available_fields"]
+        verified_at = _require_date(item.get("verified_at"), "verified_at", optional=True)
+        review_due_at = _require_date(
+            item.get("review_due_at"), "review_due_at", optional=True
+        )
+        available_fields = item.get("available_fields", [])
         if not isinstance(available_fields, list):
             raise TypeError("available_fields must be a JSON array")
         discovery_data = item.get("discovery")
@@ -319,18 +332,18 @@ def _parse_source(item: object) -> ComplianceSource:
             display_name=item["display_name"],
             phase=item["phase"],
             enabled=item["enabled"],
-            terms=item["terms"],
+            terms=item.get("terms"),
             terms_confirmed=terms_confirmed,
-            registration=item["registration"],
+            registration=item.get("registration", "unknown"),
             registration_completed=registration_completed,
-            authorization=item["authorization"],
-            rate_limit=_parse_rate_limit(item["rate_limit"]),
-            selected_data_scope=item["selected_data_scope"],
+            authorization=item.get("authorization", "unknown"),
+            rate_limit=_parse_rate_limit(item.get("rate_limit")),
+            selected_data_scope=item.get("selected_data_scope"),
             field_permission_confirmed=field_permission_confirmed,
-            evidence_url=item["evidence_url"],
+            evidence_url=item.get("evidence_url"),
             verified_at=verified_at,
             review_due_at=review_due_at,
-            owner=item["owner"],
+            owner=item.get("owner", "unassigned"),
             available_fields=tuple(available_fields),
             origin=item.get("origin", "manual"),
             discovery=discovery,
