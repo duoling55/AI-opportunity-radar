@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+from opportunity_radar.discovery.models import DiscoveryMeta
+
 PHASES = frozenset({"candidate", "verified", "retired"})
 REGISTRATION_STATUSES = frozenset(
     {"unknown", "not_required", "per_dataset", "required", "completed"}
@@ -149,6 +151,8 @@ class ComplianceSource:
     review_due_at: date
     owner: str
     available_fields: tuple[str, ...]
+    origin: str = "manual"  # manual | discovery
+    discovery: DiscoveryMeta | None = None  # 仅 origin=discovery 填充
 
     def __post_init__(self) -> None:
         _require_string(self.source_id, "source_id")
@@ -303,6 +307,10 @@ def _parse_source(item: object) -> ComplianceSource:
         available_fields = item["available_fields"]
         if not isinstance(available_fields, list):
             raise TypeError("available_fields must be a JSON array")
+        discovery_data = item.get("discovery")
+        discovery = (
+            DiscoveryMeta.model_validate(discovery_data) if discovery_data else None
+        )
         return ComplianceSource(
             source_id=item["source_id"],
             display_name=item["display_name"],
@@ -321,6 +329,8 @@ def _parse_source(item: object) -> ComplianceSource:
             review_due_at=review_due_at,
             owner=item["owner"],
             available_fields=tuple(available_fields),
+            origin=item.get("origin", "manual"),
+            discovery=discovery,
         )
     except KeyError as error:
         raise ValueError(f"{error.args[0]} is required for source {source_id}") from error

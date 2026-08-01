@@ -18,6 +18,7 @@ class SourceConfig:
     enabled: bool = True
     request_interval_seconds: float = 1.0
     adapter_version: str = "unregistered"
+    origin: str = "manual"  # manual | discovery
 
     def __post_init__(self) -> None:
         if type(self.enabled) is not bool:
@@ -77,6 +78,7 @@ def load_sources(path: Path) -> dict[str, SourceConfig]:
             enabled=enabled,
             request_interval_seconds=float(item.get("request_interval_seconds", 1.0)),
             adapter_version=item.get("adapter_version", "unregistered"),
+            origin=item.get("origin", "manual"),
         )
         if source.source_id in sources:
             raise ValueError(f"duplicate source_id: {source.source_id}")
