@@ -76,7 +76,11 @@ class StaticAnalyzer:
 
 class OpenAICompatibleAnalyzer:
     def __init__(self, base_url: str, api_key: str, model: str) -> None:
-        self.base_url = base_url.rstrip("/")
+        base_url = base_url.rstrip("/")
+        # 兼容用户填写的 base_url 不带 /v1 的情况（如 https://example.com 而非 https://example.com/v1）
+        if not base_url.endswith("/v1"):
+            base_url = base_url + "/v1"
+        self.base_url = base_url
         self.api_key = api_key
         self.model = model
         self.system_prompt = (
@@ -147,7 +151,9 @@ class OpenAICompatibleAnalyzer:
                         response.text[:500],
                     )
                 response.raise_for_status()
-                content = response.json()["choices"][0]["message"]["content"]
+                message = response.json()["choices"][0]["message"]
+                # 兼容推理模型（如 MiniMax-M2.7）：content 为空时回退到 reasoning_content
+                content = message.get("content") or message.get("reasoning_content", "")
                 analysis = PolicyAnalysis.model_validate(json.loads(content))
                 validated = validate_analysis(
                     analysis,
