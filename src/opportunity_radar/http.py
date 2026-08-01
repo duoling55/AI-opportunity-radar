@@ -14,6 +14,7 @@ class OfficialHttpClient:
         self.client = httpx.Client(
             timeout=20,
             follow_redirects=True,
+            trust_env=False,
             headers={"User-Agent": "OpportunityRadar/0.1 (+policy research)"},
             event_hooks={"request": [self._prepare_request]},
         )
@@ -29,6 +30,16 @@ class OfficialHttpClient:
         if hostname not in self.config.allowed_domains:
             raise ValueError(f"URL is not allow-listed: {hostname}")
         response = self.client.get(url)
+        if response.status_code in {401, 403, 429}:
+            raise PermissionError(f"source access restricted: {response.status_code}")
+        response.raise_for_status()
+        return response
+
+    def post(self, url: str, data: dict[str, str | int]) -> httpx.Response:
+        hostname = urlparse(url).hostname or ""
+        if hostname not in self.config.allowed_domains:
+            raise ValueError(f"URL is not allow-listed: {hostname}")
+        response = self.client.post(url, data=data)
         if response.status_code in {401, 403, 429}:
             raise PermissionError(f"source access restricted: {response.status_code}")
         response.raise_for_status()

@@ -151,6 +151,7 @@ def collect_batch(
     try:
         for source_id in config.source_ids:
             source = sources[source_id]
+            prefer_direct_http = bool(getattr(source, "prefer_direct_http", False))
             LOGGER.info(
                 "信源发现开始 source_id=%s browser_mode=%s start_date=%s end_date=%s",
                 source_id,
@@ -159,7 +160,7 @@ def collect_batch(
                 config.end_date,
             )
             try:
-                if browser is not None and browser_mode == "always":
+                if browser is not None and browser_mode == "always" and not prefer_direct_http:
                     candidates = browser.discover(source, config.start_date, config.end_date)
                 else:
                     try:
@@ -208,7 +209,7 @@ def collect_batch(
             report = _increment(report, "discovered", len(candidates))
             for candidate in candidates:
                 try:
-                    if browser is not None and browser_mode == "always":
+                    if browser is not None and browser_mode == "always" and not prefer_direct_http:
                         document = browser.fetch_document(
                             source,
                             candidate,

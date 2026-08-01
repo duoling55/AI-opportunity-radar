@@ -8,6 +8,20 @@ from opportunity_radar.http import OfficialHttpClient
 from opportunity_radar.sources.base import GenericHtmlSource
 
 
+def test_client_ignores_environment_proxy_settings(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeClient:
+        def __init__(self, **kwargs: object) -> None:
+            captured.update(kwargs)
+
+    monkeypatch.setattr("opportunity_radar.http.httpx.Client", FakeClient)
+
+    OfficialHttpClient(SourceConfig("demo", "演示", "全国", (), ("policy.example.gov.cn",)))
+
+    assert captured["trust_env"] is False
+
+
 def test_discovery_extracts_detail_link_and_date(httpx_mock) -> None:
     config = SourceConfig(
         "demo",
@@ -39,6 +53,39 @@ def test_client_rejects_non_official_domain() -> None:
 
     with pytest.raises(ValueError, match="allow-listed"):
         OfficialHttpClient(config).get("https://not-official.example/list")
+
+
+def test_client_posts_form_data_to_an_allowlisted_source(httpx_mock) -> None:
+    config = SourceConfig(
+        "demo",
+        "演示",
+        "全国",
+        (),
+        ("policy.example.gov.cn",),
+        request_interval_seconds=0,
+    )
+    httpx_mock.add_response(
+        url="https://policy.example.gov.cn/list",
+        method="POST",
+        json={"status": 1},
+    )
+
+    response = OfficialHttpClient(config).post(
+        "https://policy.example.gov.cn/list",
+        {"pageNum": 1, "pageSize": 100},
+    )
+
+    assert response.json() == {"status": 1}
+    request = httpx_mock.get_requests()[0]
+    assert request.method == "POST"
+    assert request.content == b"pageNum=1&pageSize=100"
+
+
+def test_client_rejects_post_to_non_official_domain() -> None:
+    config = SourceConfig("demo", "演示", "全国", (), ("policy.example.gov.cn",))
+
+    with pytest.raises(ValueError, match="allow-listed"):
+        OfficialHttpClient(config).post("https://attacker.example/list", {"pageNum": 1})
 
 
 def test_client_rejects_redirect_to_non_official_domain(httpx_mock) -> None:
