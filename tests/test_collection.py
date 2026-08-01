@@ -59,6 +59,32 @@ class _EmptySource:
         return []
 
 
+class _ApiSource(_Source):
+    prefer_direct_http = True
+
+
+class _BrowserThatMustNotCollect:
+    def __init__(self) -> None:
+        self.closed = False
+
+    def discover(self, source: object, start: date, end: date) -> list[PolicyCandidate]:
+        del source, start, end
+        raise AssertionError("API source must not be collected through the browser")
+
+    def fetch_document(
+        self,
+        source: object,
+        candidate: PolicyCandidate,
+        collected_at: datetime,
+        raw_dir: Path,
+    ) -> PolicyDocument:
+        del source, candidate, collected_at, raw_dir
+        raise AssertionError("API source detail must not be fetched through the browser")
+
+    def close(self) -> None:
+        self.closed = True
+
+
 def _config(tmp_path: Path) -> RunConfig:
     return RunConfig(
         date(2026, 7, 1),
@@ -126,6 +152,21 @@ def test_collect_batch_logs_an_actionable_warning_when_discovery_is_empty(
     assert load_batch(batch_path).report.discovered == 0
     assert "信源未发现候选 source_id=fixture" in caplog.text
     assert "请检查列表地址、页面选择器和日期范围" in caplog.text
+
+
+def test_collect_batch_prefers_an_api_source_when_browser_mode_is_always(tmp_path: Path) -> None:
+    browser = _BrowserThatMustNotCollect()
+
+    batch_path = collect_batch(
+        _config(tmp_path),
+        {"fixture": _ApiSource()},
+        _Retriever(),
+        browser=browser,
+        browser_mode="always",
+    )
+
+    assert load_batch(batch_path).report.collected == 1
+    assert browser.closed is True
 
 
 @pytest.mark.parametrize("status", [401, 403, 429])

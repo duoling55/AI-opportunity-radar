@@ -38,6 +38,7 @@ def _api_text(*values: object) -> str:
 
 
 class ZhejiangHuiqiSource(GenericHtmlSource):
+    prefer_direct_http = True
     detail_content_selectors = ("#policy-detail", ".policy-detail", "article", "main")
 
     def discover(self, start: date, end: date) -> list[PolicyCandidate]:
