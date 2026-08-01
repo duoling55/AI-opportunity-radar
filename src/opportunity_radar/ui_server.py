@@ -28,12 +28,17 @@ from opportunity_radar.analysis.prompts import (
 from opportunity_radar.collection import load_batch
 from opportunity_radar.config import SourceConfig, load_sources
 from opportunity_radar.diagnostics import safe_url
+from opportunity_radar.discovery.service import DiscoveryService
 from opportunity_radar.sources.registry import SOURCE_TYPES
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIRECTORY = Path(__file__).with_name("ui_static")
 SOURCE_CONFIG_PATH = PROJECT_ROOT / "config" / "sources.json"
 PROMPT_CONFIG_PATH = PROJECT_ROOT / "config" / "analysis_prompts.json"
+COMPLIANCE_CONFIG_PATH = PROJECT_ROOT / "config" / "compliance_sources.json"
+DISCOVERY_PORTALS_PATH = PROJECT_ROOT / "config" / "discovery_portals.json"
+DISCOVERY_KEYWORDS_PATH = PROJECT_ROOT / "config" / "discovery_keywords.json"
+DISCOVERY_REPORT_DIRECTORY = PROJECT_ROOT / "data" / "discovery"
 BATCH_DIRECTORY = PROJECT_ROOT / "data" / "normalized" / "batches"
 RAW_DIRECTORY = PROJECT_ROOT / "data" / "raw"
 OUTPUT_DIRECTORY = PROJECT_ROOT / "outputs"
@@ -633,6 +638,68 @@ def _results_payload() -> dict[str, object]:
     }
 
 
+def _discovery_service() -> DiscoveryService:
+    return DiscoveryService(
+        compliance_path=str(COMPLIANCE_CONFIG_PATH),
+        sources_path=str(SOURCE_CONFIG_PATH),
+    )
+
+
+def _discovery_candidates_payload() -> list[dict[str, object]]:
+    return _discovery_service().list_candidates()
+
+
+def _discovery_candidate_payload(source_id: str) -> dict[str, object]:
+    return _discovery_service().get_candidate(source_id) or {}
+
+
+def _discovery_portals_payload() -> list[dict[str, object]]:
+    return _read_json(DISCOVERY_PORTALS_PATH) if DISCOVERY_PORTALS_PATH.exists() else []
+
+
+def _discovery_keywords_payload() -> list[str]:
+    items = _read_json(DISCOVERY_KEYWORDS_PATH) if DISCOVERY_KEYWORDS_PATH.exists() else []
+    tags: list[str] = []
+    for item in items:
+        tag = item.get("tag")
+        if tag and tag not in tags:
+            tags.append(tag)
+    return tags
+
+
+def _discovery_reports_payload() -> list[dict[str, object]]:
+    return [
+        {**_file_item(path), "data": _read_json(path)}
+        for path in _files(DISCOVERY_REPORT_DIRECTORY, "*-report.json")
+    ]
+
+
+def _start_discovery_search(payload: dict[str, Any]) -> dict[str, object]:
+    keywords = str(payload.get("keywords", "all"))
+    portals = str(payload.get("portals", "all"))
+    arguments = ["search-sources", "--keywords", keywords, "--portals", portals]
+    job = _start_job("信源搜索", arguments, os.environ.copy())
+    return _job_payload(job)
+
+
+def _discovery_promote(source_id: str, payload: dict[str, Any]) -> dict[str, object]:
+    return _discovery_service().promote(
+        source_id,
+        reviewer=payload.get("reviewer", ""),
+        override_not_recommended=bool(payload.get("override_not_recommended", False)),
+    )
+
+
+def _discovery_review(source_id: str, payload: dict[str, Any]) -> dict[str, object]:
+    return _discovery_service().review(
+        source_id,
+        action=payload.get("action", ""),
+        reason=payload.get("reason"),
+        reviewer=payload.get("reviewer", ""),
+        comment=payload.get("comment", ""),
+    )
+
+
 def _cell_value(value: object) -> object:
     if isinstance(value, (date, datetime)):
         return value.isoformat()
@@ -750,6 +817,17 @@ class RadarRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(_jobs_payload())
             elif parsed.path == "/api/results":
                 self._send_json(_results_payload())
+            elif parsed.path == "/api/discovery/candidates":
+                self._send_json(_discovery_candidates_payload())
+            elif parsed.path.startswith("/api/discovery/candidates/"):
+                source_id = parsed.path.rsplit("/", 1)[-1]
+                self._send_json(_discovery_candidate_payload(source_id))
+            elif parsed.path == "/api/discovery/portals":
+                self._send_json(_discovery_portals_payload())
+            elif parsed.path == "/api/discovery/keywords":
+                self._send_json(_discovery_keywords_payload())
+            elif parsed.path == "/api/discovery/reports":
+                self._send_json(_discovery_reports_payload())
             elif parsed.path == "/api/workbook":
                 self._send_json(
                     _workbook_payload(
@@ -812,6 +890,14 @@ class RadarRequestHandler(BaseHTTPRequestHandler):
                 if not job_id:
                     raise ValueError("job_id 不能为空")
                 self._send_json(_stop_job(str(job_id)))
+            elif path == "/api/discovery/search":
+                self._send_json(_start_discovery_search(payload), HTTPStatus.ACCEPTED)
+            elif path.startswith("/api/discovery/candidates/") and path.endswith("/promote"):
+                source_id = path.split("/")[4]
+                self._send_json(_discovery_promote(source_id, payload))
+            elif path.startswith("/api/discovery/candidates/") and path.endswith("/review"):
+                source_id = path.split("/")[4]
+                self._send_json(_discovery_review(source_id, payload))
             else:
                 self._send_json({"error": "接口不存在"}, HTTPStatus.NOT_FOUND)
         except (
