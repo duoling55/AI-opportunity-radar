@@ -502,6 +502,13 @@ async function loadAnalysisDocuments() {
   state.analysisSelection = new Set();
   state.pagination.analysis = 1;
   document.querySelector("#analysis-policy-query").value = "";
+  // 从 localStorage 加载 LLM 配置
+  const savedBaseUrl = window.localStorage.getItem("radar-llm-base-url");
+  const savedModel = window.localStorage.getItem("radar-llm-model");
+  const savedProvider = window.localStorage.getItem("radar-llm-provider");
+  if (savedBaseUrl) document.querySelector("#llm-base-url").value = savedBaseUrl;
+  if (savedModel) document.querySelector("#llm-model").value = savedModel;
+  if (savedProvider) document.querySelector("#llm-provider").value = savedProvider;
   renderAnalysisDocuments();
 }
 
@@ -579,13 +586,22 @@ async function startAnalysis(event) {
   if (!state.analysisSelection.size) {
     throw new Error("请至少选择一篇公文进行分析。");
   }
+  // 保存到 localStorage
+  const baseUrl = document.querySelector("#llm-base-url").value.trim();
+  const model = document.querySelector("#llm-model").value.trim();
+  const provider = document.querySelector("#llm-provider").value;
+  window.localStorage.setItem("radar-llm-base-url", baseUrl);
+  window.localStorage.setItem("radar-llm-model", model);
+  window.localStorage.setItem("radar-llm-provider", provider);
+  // API Key 不存储，每次手动输入
+
   await api("/api/analyze", {
     method: "POST",
     body: JSON.stringify({
       batch_name: document.querySelector("#analysis-batch").value,
-      provider: document.querySelector("#llm-provider").value,
-      base_url: document.querySelector("#llm-base-url").value.trim(),
-      model: document.querySelector("#llm-model").value.trim(),
+      provider: provider,
+      base_url: baseUrl,
+      model: model,
       api_key: document.querySelector("#llm-api-key").value.trim(),
       system_prompt: document.querySelector("#system-prompt").value.trim(),
       user_prompt_template: document.querySelector("#user-prompt-template").value.trim(),
@@ -593,7 +609,6 @@ async function startAnalysis(event) {
       force: document.querySelector("#force-analysis").checked,
     }),
   });
-  document.querySelector("#llm-api-key").value = "";
   notify(`已启动 ${state.analysisSelection.size} 篇公文的分析任务，API Key 未写入磁盘。`);
   await loadJobs();
   await loadSummary();
@@ -796,6 +811,16 @@ document.querySelector("#analysis-batch").addEventListener("change", loadAnalysi
 document.querySelector("#analysis-policy-query").addEventListener("input", () => {
   state.pagination.analysis = 1;
   renderAnalysisDocuments();
+});
+// 实时保存 LLM 配置到 localStorage
+document.querySelector("#llm-base-url").addEventListener("input", (event) => {
+  window.localStorage.setItem("radar-llm-base-url", event.target.value.trim());
+});
+document.querySelector("#llm-model").addEventListener("input", (event) => {
+  window.localStorage.setItem("radar-llm-model", event.target.value.trim());
+});
+document.querySelector("#llm-provider").addEventListener("change", (event) => {
+  window.localStorage.setItem("radar-llm-provider", event.target.value);
 });
 document
   .querySelector("#select-analysis-page")
