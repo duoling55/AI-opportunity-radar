@@ -6,6 +6,7 @@ const state = {
   currentWorkbook: null,
   prompts: null,
   jobs: [],
+  jobLogOpen: {},
   analysisDocuments: [],
   analysisSelection: new Set(),
   pagination: {
@@ -179,6 +180,7 @@ function setPage(page) {
   document.querySelector("#page-title").textContent = pages[page][0];
   document.querySelector("#page-subtitle").textContent = pages[page][1];
   if (page === "batches") loadSelectedBatch();
+  if (page === "analyze") refreshAnalysisPage();
   if (page === "results") loadSelectedWorkbook();
 }
 
@@ -294,6 +296,10 @@ function jobMarkup(job) {
     failed: "任务失败",
   };
   const report = job.report;
+  const defaultOpen = ["running", "warning", "failed"].includes(job.status);
+  const logOpen = Object.hasOwn(state.jobLogOpen, job.job_id)
+    ? state.jobLogOpen[job.job_id]
+    : defaultOpen;
   const reportMarkup = report
     ? `<div class="job-summary">
         <span>进入分析 ${report.changed || 0}</span>
@@ -312,8 +318,7 @@ function jobMarkup(job) {
       </header>
       <small>${formatTime(job.started_at)}</small>
       ${reportMarkup}
-      <details class="job-log" ${job.status === "running" || job.status === "warning" ||
-        job.status === "failed" ? "open" : ""}>
+      <details class="job-log" data-job-id="${escapeHtml(job.job_id)}" ${logOpen ? "open" : ""}>
         <summary>查看详细日志（${formatSize(job.log_size || 0)}）</summary>
         <pre>${escapeHtml(job.log || "等待任务输出……")}</pre>
       </details>
@@ -338,6 +343,11 @@ function renderJobs() {
     '<div class="empty-state">暂无采集任务</div>';
   document.querySelector("#analysis-jobs").innerHTML =
     analysisPage.items.map(jobMarkup).join("") || '<div class="empty-state">暂无分析任务</div>';
+  document.querySelectorAll(".job-log").forEach((details) => {
+    details.addEventListener("toggle", () => {
+      state.jobLogOpen[details.dataset.jobId] = details.open;
+    });
+  });
   renderPagination(
     "collection-job-pagination",
     "collectionJobs",
@@ -697,6 +707,15 @@ async function refreshAll() {
     await loadBatches();
     await loadResults();
     notify("数据已刷新。");
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
+async function refreshAnalysisPage() {
+  try {
+    await Promise.all([loadSummary(), loadJobs()]);
+    await loadBatches();
   } catch (error) {
     notify(error.message, true);
   }
