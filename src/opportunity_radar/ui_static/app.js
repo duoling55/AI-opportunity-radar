@@ -180,6 +180,7 @@ function setPage(page) {
   document.querySelector("#page-title").textContent = pages[page][0];
   document.querySelector("#page-subtitle").textContent = pages[page][1];
   if (page === "batches") loadSelectedBatch();
+  if (page === "analyze") refreshAnalysisPage();
   if (page === "results") loadSelectedWorkbook();
 }
 
@@ -706,6 +707,15 @@ async function refreshAll() {
     await loadBatches();
     await loadResults();
     notify("数据已刷新。");
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
+async function refreshAnalysisPage() {
+  try {
+    await Promise.all([loadSummary(), loadJobs()]);
+    await loadBatches();
   } catch (error) {
     notify(error.message, true);
   }
