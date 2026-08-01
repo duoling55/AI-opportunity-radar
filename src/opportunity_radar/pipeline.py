@@ -7,6 +7,8 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from time import perf_counter
 
+import httpx
+
 from opportunity_radar.analysis.client import Analyzer
 from opportunity_radar.config import RunConfig
 from opportunity_radar.export.excel import ExportRow, export_workbook
@@ -349,6 +351,13 @@ def run_pipeline(
                         datetime.now(UTC),
                     )
                 )
+                # 401/403 是认证/授权问题，继续跑剩余文章只会全部失败，立即终止整批
+                if isinstance(error, httpx.HTTPStatusError) and error.response.status_code in (401, 403):
+                    LOGGER.error(
+                        "API 认证失败（%d），终止本批分析。请检查 API Key 是否有效。",
+                        error.response.status_code,
+                    )
+                    break
                 continue
 
             store.record_success(document.policy_id, document.content_hash, dedupe_key)
