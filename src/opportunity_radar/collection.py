@@ -18,6 +18,33 @@ from opportunity_radar.state import StateStore
 LOGGER = logging.getLogger(__name__)
 
 
+def filter_collectable(
+    sources: list[dict],
+    compliance_path: str = "config/compliance_sources.json",
+) -> list[dict]:
+    """FR-02 采集门控：discovery 信源须 phase=verified AND enabled=true 才可采集。
+
+    手动信源（manual）或不在合规台账中的信源不受此门控约束，保持原有行为。
+    """
+    compliance: dict[str, dict] = {}
+    path = Path(compliance_path)
+    if path.exists():
+        text = path.read_text(encoding="utf-8").strip()
+        if text:
+            compliance = {record["source_id"]: record for record in json.loads(text)}
+    selectable: list[dict] = []
+    for source in sources:
+        record = compliance.get(source.get("source_id"))
+        if (
+            record is not None
+            and record.get("origin") == "discovery"
+            and not (record.get("phase") == "verified" and record.get("enabled"))
+        ):
+            continue
+        selectable.append(source)
+    return selectable
+
+
 @dataclass(frozen=True)
 class CollectionReport:
     discovered: int = 0

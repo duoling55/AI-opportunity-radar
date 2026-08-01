@@ -25,7 +25,7 @@ from opportunity_radar.analysis.prompts import (
     USER_PROMPT_TEMPLATE,
     validate_user_prompt_template,
 )
-from opportunity_radar.collection import load_batch
+from opportunity_radar.collection import filter_collectable, load_batch
 from opportunity_radar.config import SourceConfig, load_sources
 from opportunity_radar.diagnostics import safe_url
 from opportunity_radar.discovery.service import DiscoveryService
@@ -104,6 +104,7 @@ def _source_payload() -> list[dict[str, object]]:
             "enabled": source.enabled,
             "request_interval_seconds": source.request_interval_seconds,
             "adapter_version": source.adapter_version,
+            "origin": source.origin,
         }
         for source in load_sources(SOURCE_CONFIG_PATH).values()
     ]
@@ -121,7 +122,15 @@ def _validate_sources(items: object) -> list[dict[str, object]]:
         source_id = str(item.get("source_id", "")).strip()
         if source_id in seen:
             raise ValueError(f"信源 ID 重复：{source_id}")
-        if source_id not in original_ids or source_id not in SOURCE_TYPES:
+        origin = str(item.get("origin", "manual")).strip()
+        adapter_version = str(item.get("adapter_version", "")).strip()
+        is_generic_discovery = origin == "discovery" and adapter_version == "generic"
+        if source_id not in original_ids:
+            if not is_generic_discovery:
+                raise ValueError(
+                    f"仅允许新增 origin=discovery 且 generic 适配器的信源：{source_id}"
+                )
+        elif source_id not in SOURCE_TYPES and not is_generic_discovery:
             raise ValueError(f"信源 ID 不可修改，且必须有现成适配器：{source_id}")
         seen.add(source_id)
         list_urls = tuple(
@@ -153,7 +162,8 @@ def _validate_sources(items: object) -> list[dict[str, object]]:
             allowed_domains=allowed_domains,
             enabled=bool(item.get("enabled", False)),
             request_interval_seconds=interval,
-            adapter_version=str(item.get("adapter_version", "")).strip(),
+            adapter_version=adapter_version,
+            origin=origin,
         )
         if not source.display_name or not source.region:
             raise ValueError(f"{source_id} 的名称和地区不能为空")
@@ -167,9 +177,10 @@ def _validate_sources(items: object) -> list[dict[str, object]]:
                 "enabled": source.enabled,
                 "request_interval_seconds": source.request_interval_seconds,
                 "adapter_version": source.adapter_version,
+                "origin": source.origin,
             }
         )
-    if seen != original_ids:
+    if not original_ids.issubset(seen):
         raise ValueError("不能在此页面删除已有信源")
     return payload
 
@@ -541,6 +552,23 @@ def _start_collection(payload: dict[str, Any]) -> dict[str, object]:
     ]
     if invalid:
         raise ValueError("信源不存在或已停用：" + "、".join(invalid))
+    # 采集门控：discovery 信源须 verified AND enabled 才可采集
+    selectable_ids = {
+        str(item["source_id"])
+        for item in filter_collectable(
+            [
+                {
+                    "source_id": source_id,
+                    "origin": getattr(configured[source_id], "origin", "manual"),
+                }
+                for source_id in source_ids
+            ],
+            compliance_path=str(COMPLIANCE_CONFIG_PATH),
+        )
+    }
+    blocked = [source_id for source_id in source_ids if source_id not in selectable_ids]
+    if blocked:
+        raise ValueError("信源未核验，不可采集：" + "、".join(blocked))
     start_date = date.fromisoformat(str(payload.get("start_date", "")))
     end_date = date.fromisoformat(str(payload.get("end_date", "")))
     if start_date > end_date:
