@@ -108,6 +108,9 @@ class DocumentRetriever:
         collected_at: datetime,
         raw_dir: Path,
     ) -> PolicyDocument:
+        source_fetch_document = getattr(source, "fetch_document", None)
+        if callable(source_fetch_document):
+            return source_fetch_document(candidate, collected_at, raw_dir)
         response = source.client.get(str(candidate.detail_url))
         snapshot = save_snapshot(raw_dir, make_policy_id(candidate), "html", response.content)
         document = parse_html(
