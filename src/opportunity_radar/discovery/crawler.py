@@ -87,6 +87,7 @@ class PortalCrawler:
         # 复用 PlaywrightCollector 的浏览器上下文：渲染后取 page.content()，不截图。
         # NOTE: 依赖 PlaywrightCollector._context 内部 API（_ensure_started 后可用），
         # P0 单测 browser=None 不覆盖此分支；接入时按 browser.py 实际结构调整。
+        self._throttle()
         self._browser._ensure_started()
         page = self._browser._context.new_page()
         try:
@@ -94,10 +95,10 @@ class PortalCrawler:
             html = page.content()
             final_url = page.url
             if allowed_domains and urlparse(final_url).hostname not in allowed_domains:
-                return self._restricted(final_url, "cross_domain", html, "", [])
+                return self._restricted(final_url, "cross_domain", html, "", [], fetch_mode="playwright")
             restricted_reason = self._detect_restricted(html)
             if restricted_reason:
-                return self._restricted(final_url, restricted_reason, html, "", [])
+                return self._restricted(final_url, restricted_reason, html, "", [], fetch_mode="playwright")
             items, text, title = self._parse(html, final_url)
             return CrawlResult(
                 fetch_mode="playwright",
@@ -159,10 +160,11 @@ class PortalCrawler:
         return str(path)
 
     def _restricted(
-        self, final_url: str, reason: str, html: str, text: str, items
+        self, final_url: str, reason: str, html: str, text: str, items,
+        fetch_mode: str = "http",
     ) -> CrawlResult:
         return CrawlResult(
-            fetch_mode="http",
+            fetch_mode=fetch_mode,
             html=html,
             text_content=text,
             page_title="",

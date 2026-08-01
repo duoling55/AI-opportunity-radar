@@ -46,7 +46,7 @@ class DiscoveryOrchestrator:
         self,
         keyword_tags: list[str] | None,
         portal_ids: list[str] | None,
-        mode: str = "direct_crawl",
+        mode: str = "direct-crawl",
     ) -> DiscoveryReport:
         started = datetime.now(UTC).isoformat()
         job_id = f"disc-{uuid.uuid4().hex[:8]}"

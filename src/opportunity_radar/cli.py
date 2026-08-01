@@ -198,7 +198,6 @@ def _parser() -> argparse.ArgumentParser:
         default="direct-crawl",
         choices=["direct-crawl"],
     )
-    search.set_defaults(func=cmd_search_sources)
     return parser
 
 
@@ -260,12 +259,17 @@ def build_orchestrator():
 
 
 def cmd_search_sources(args) -> int:
-    orch = build_orchestrator()
-    tags = None if args.keywords == "all" else args.keywords.split(",")
-    ids = None if args.portals == "all" else args.portals.split(",")
-    report = orch.run(keyword_tags=tags, portal_ids=ids, mode=args.mode)
+    try:
+        orch = build_orchestrator()
+        tags = None if args.keywords == "all" else args.keywords.split(",")
+        ids = None if args.portals == "all" else args.portals.split(",")
+        report = orch.run(keyword_tags=tags, portal_ids=ids, mode=args.mode)
+    except (KeyError, OSError, TypeError, ValueError) as error:
+        print(f"search-sources failed: {error}", file=sys.stderr)
+        return 1
+    print(f"Report: data/discovery/{report.job_id}-report.json")
     print(
-        f"Report: discovery job={report.job_id} candidates={len(report.candidates)} "
+        f"discovery job={report.job_id} candidates={len(report.candidates)} "
         f"restricted={report.stats.get('restricted_stopped', 0)}"
     )
     return 0
@@ -312,7 +316,7 @@ def main(argv: Sequence[str] | None = None) -> int | None:
         return
 
     if args.command == "search-sources":
-        return args.func(args)
+        return cmd_search_sources(args)
 
     try:
         configured = load_sources(Path("config/sources.json"))

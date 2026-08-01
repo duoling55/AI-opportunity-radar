@@ -1,3 +1,5 @@
+import pytest
+
 from opportunity_radar.discovery.keywords import FallbackKeywordSource
 
 
@@ -11,7 +13,5 @@ def test_fallback_returns_nonempty_keywords():
 
 
 def test_fallback_missing_file_raises(tmp_path):
-    import pytest
-
     with pytest.raises(FileNotFoundError):
         FallbackKeywordSource(path=str(tmp_path / "nope.json")).get_search_keywords()

@@ -9,6 +9,7 @@ import json
 
 import httpx
 
+from opportunity_radar.compliance import load_compliance_sources
 from opportunity_radar.discovery.checker import ComplianceChecker
 from opportunity_radar.discovery.crawler import PortalCrawler
 from opportunity_radar.discovery.keywords import FallbackKeywordSource
@@ -86,3 +87,11 @@ def test_e2e_discovery_pipeline(httpx_mock, tmp_path, monkeypatch):
     assert len(report_files) == 1
     rep = json.loads(report_files[0].read_text())
     assert rep["candidates"] == ["gov_e2e"]
+
+    # 编排器产出的候选可被 compliance 加载闭环
+    loaded = load_compliance_sources(comp)
+    assert len(loaded) == 1
+    first = next(iter(loaded.values()))
+    assert first.origin == "discovery"
+    assert first.phase == "candidate"
+    assert first.discovery.priority_score == 90
