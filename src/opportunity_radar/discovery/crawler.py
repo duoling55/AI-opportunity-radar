@@ -16,7 +16,6 @@ _DEFAULT_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 )
-_RESTRICTED_STATUSES = (401, 403, 429)
 
 
 class PortalCrawler:
@@ -60,7 +59,7 @@ class PortalCrawler:
     def _fetch_http(self, url: str, allowed_domains) -> CrawlResult:
         self._throttle()
         resp = self._http.get(url, headers=self._headers(url), follow_redirects=True)
-        if resp.status_code in _RESTRICTED_STATUSES:
+        if resp.status_code >= 400:
             return self._restricted(
                 str(resp.url), f"http_{resp.status_code}", "", "", []
             )

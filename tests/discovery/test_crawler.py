@@ -53,6 +53,21 @@ def test_crawl_403_marks_restricted(httpx_mock):
     assert r.restricted_reason == "http_403"
 
 
+def test_crawl_404_marks_restricted_and_skips_snapshot(httpx_mock, tmp_path):
+    httpx_mock.add_response(url="https://www.gov.cn/missing.html", status_code=404)
+    c = PortalCrawler(
+        http=httpx.Client(),
+        browser=None,
+        request_interval=0.0,
+        snapshots_dir=str(tmp_path),
+    )
+    r = c.crawl("https://www.gov.cn/missing.html", "gov_404")
+    assert r.restricted is True
+    assert r.restricted_reason == "http_404"
+    assert r.snapshot_path == ""
+    assert not (tmp_path / "gov_404").exists()
+
+
 def test_crawl_cross_domain_final_url_restricted(httpx_mock):
     httpx_mock.add_response(
         url="https://www.gov.cn/redirect.html",
