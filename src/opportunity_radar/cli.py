@@ -198,6 +198,17 @@ def _parser() -> argparse.ArgumentParser:
         default="direct-crawl",
         choices=["direct-crawl"],
     )
+    search.add_argument(
+        "--browser",
+        choices=("off", "fallback"),
+        default="fallback",
+        help="JS 渲染回退：HTTP 抓不到时用 Playwright 渲染（fallback），或关闭（off）",
+    )
+    search.add_argument(
+        "--headed",
+        action="store_true",
+        help="显示浏览器窗口，用于调试 JS 渲染",
+    )
     return parser
 
 
@@ -241,7 +252,7 @@ def _analysis_inputs() -> tuple[dict[str, str], list[str]]:
     return valid_codes, business_tags
 
 
-def build_orchestrator():
+def build_orchestrator(browser=None):
     import httpx
 
     from opportunity_radar.discovery.checker import ComplianceChecker
@@ -251,7 +262,7 @@ def build_orchestrator():
     from opportunity_radar.discovery.scorer import ImportanceScorer
 
     return DiscoveryOrchestrator(
-        PortalCrawler(httpx.Client(timeout=30.0)),
+        PortalCrawler(httpx.Client(timeout=30.0), browser=browser),
         ComplianceChecker(),
         ImportanceScorer(),
         FallbackKeywordSource(),
@@ -259,14 +270,22 @@ def build_orchestrator():
 
 
 def cmd_search_sources(args) -> int:
+    browser = None
+    if args.browser != "off":
+        from opportunity_radar.browser import PlaywrightCollector
+
+        browser = PlaywrightCollector(headless=not args.headed, max_pages=20)
     try:
-        orch = build_orchestrator()
+        orch = build_orchestrator(browser=browser)
         tags = None if args.keywords == "all" else args.keywords.split(",")
         ids = None if args.portals == "all" else args.portals.split(",")
         report = orch.run(keyword_tags=tags, portal_ids=ids, mode=args.mode)
     except (KeyError, OSError, TypeError, ValueError) as error:
         print(f"search-sources failed: {error}", file=sys.stderr)
         return 1
+    finally:
+        if browser is not None:
+            browser.close()
     print(f"Report: data/discovery/{report.job_id}-report.json")
     print(
         f"discovery job={report.job_id} candidates={len(report.candidates)} "

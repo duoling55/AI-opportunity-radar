@@ -46,12 +46,9 @@ class PortalCrawler:
         result = self._fetch_http(url, allowed_domains)
         if result.restricted:
             return result
-        # JS 渲染回退：policy_items 为空且页面含框架特征且浏览器可用
-        if (
-            not result.policy_items
-            and self._has_js_framework(result.html)
-            and self._browser is not None
-        ):
+        # JS 渲染回退：HTTP 未提取到政策链接且浏览器可用时，渲染页面再解析。
+        # 不依赖框架特征标记——政府站点常以 AJAX 加载内容而无 vue/react 痕迹。
+        if not result.policy_items and self._browser is not None:
             result = self._fetch_playwright(url, allowed_domains)
         result.snapshot_path = self._save_snapshot(result.html, portal_id)
         return result
@@ -90,7 +87,10 @@ class PortalCrawler:
         self._browser._ensure_started()
         page = self._browser._context.new_page()
         try:
-            page.goto(url, wait_until="networkidle")
+            # domcontentloaded + 固定等待：政府站点常不触发 load/networkidle
+            #（长连接统计脚本），DOM 就绪后等 AJAX 填充政策列表。
+            page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+            page.wait_for_timeout(3000)
             html = page.content()
             final_url = page.url
             if allowed_domains and urlparse(final_url).hostname not in allowed_domains:
@@ -144,12 +144,6 @@ class PortalCrawler:
             if link_text and any(m in link_text for m in POLICY_TITLE_MARKERS):
                 items.append(PolicyItem(title=link_text, url=urljoin(base_url, a["href"])))
         return items, text, title
-
-    def _has_js_framework(self, html: str) -> bool:
-        low = html.lower()
-        return any(
-            x in low for x in ('id="app"', 'id="root"', "vue", "react", "__next_data__")
-        )
 
     def _save_snapshot(self, html: str, portal_id: str) -> str:
         directory = self._snap_dir / portal_id
