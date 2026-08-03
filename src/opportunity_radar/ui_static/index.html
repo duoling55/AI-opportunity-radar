@@ -40,6 +40,9 @@
         <button class="nav-item" data-page="results">
           <b>05</b><span>查看结果</span>
         </button>
+        <button class="nav-item" data-page="search">
+          <b>06</b><span>信源搜索</span>
+        </button>
       </nav>
       <div class="privacy-note">
         <span class="status-dot"></span>
@@ -333,6 +336,39 @@
         </div>
         <div id="result-pagination" class="pagination"></div>
       </section>
+
+      <section id="page-search" class="page">
+        <div class="panel">
+          <div class="section-heading">
+            <div>
+              <div class="panel-kicker">DISCOVERY</div>
+              <h2>发起信源搜索</h2>
+              <p>基于知识库关键词自动发现政府政策信源，核查评分后确认启用。</p>
+            </div>
+            <button id="search-start-btn" class="primary-button">发起搜索</button>
+          </div>
+          <div class="form-grid two">
+            <label>
+              关键词标签
+              <select id="search-keywords"><option value="all">全部</option></select>
+            </label>
+            <label>
+              门户种子
+              <select id="search-portals"><option value="all">全部</option></select>
+            </label>
+          </div>
+          <div id="search-progress" class="inline-stats hidden"></div>
+        </div>
+        <div class="panel">
+          <div class="section-heading compact">
+            <div>
+              <div class="panel-kicker">CANDIDATES</div>
+              <h2>候选信源</h2>
+            </div>
+          </div>
+          <div id="search-candidates" class="candidate-list"></div>
+        </div>
+      </section>
     </main>
 
     <dialog id="document-modal" class="document-modal">
@@ -346,6 +382,19 @@
         </button>
       </div>
       <div id="modal-content" class="modal-content"></div>
+    </dialog>
+
+    <dialog id="search-detail-modal" class="document-modal">
+      <div class="modal-header">
+        <div>
+          <div class="panel-kicker">SOURCE DETAIL</div>
+          <h2 id="search-detail-title">候选详情</h2>
+        </div>
+        <button id="close-search-detail-modal" class="modal-close" type="button" aria-label="关闭">
+          ×
+        </button>
+      </div>
+      <div id="search-detail-content" class="modal-content"></div>
     </dialog>
 
     <script src="/static/app.js" defer></script>

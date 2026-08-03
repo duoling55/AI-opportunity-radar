@@ -33,6 +33,7 @@ const pages = {
   batches: ["结构化数据", "检索公文元数据、规范正文和原始快照。"],
   analyze: ["发起分析", "使用 MiMo 等模型从本地批次提取可验证商机。"],
   results: ["查看结果", "筛选重点商机与政策观察，并下载完整成果。"],
+  search: ["信源搜索", "基于知识库关键词自动发现政府政策信源，核查评分后确认启用。"],
 };
 
 function escapeHtml(value) {
@@ -262,6 +263,7 @@ function setPage(page) {
   if (page === "batches") loadSelectedBatch();
   if (page === "analyze") refreshAnalysisPage();
   if (page === "results") loadSelectedWorkbook();
+  if (page === "search") loadSearchPage();
 }
 
 async function loadSources() {
@@ -834,6 +836,229 @@ function renderWorkbookRows() {
   );
 }
 
+async function loadSearchPage() {
+  try {
+    const [portals, keywords] = await Promise.all([
+      api("/api/discovery/portals"),
+      api("/api/discovery/keywords"),
+    ]);
+    const portalSelect = document.querySelector("#search-portals");
+    portalSelect.innerHTML =
+      '<option value="all">全部</option>' +
+      portals
+        .map(
+          (p) =>
+            `<option value="${escapeHtml(p.portal_id)}">${escapeHtml(p.display_name)} · ${escapeHtml(p.region)}</option>`,
+        )
+        .join("");
+    syncCustomSelect(portalSelect);
+    const kwSelect = document.querySelector("#search-keywords");
+    kwSelect.innerHTML =
+      '<option value="all">全部</option>' +
+      keywords.map((tag) => `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`).join("");
+    syncCustomSelect(kwSelect);
+    await loadSearchCandidates();
+    renderSearchProgress();
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
+async function loadSearchCandidates() {
+  const data = await api("/api/discovery/candidates");
+  const box = document.querySelector("#search-candidates");
+  box.innerHTML =
+    (data || []).map(candidateCard).join("") ||
+    '<div class="empty-state">暂无候选信源，发起搜索后自动刷新。</div>';
+  document.querySelectorAll("#search-candidates [data-detail]").forEach((btn) => {
+    btn.addEventListener("click", () => openSearchDetail(btn.dataset.detail));
+  });
+  document.querySelectorAll("#search-candidates [data-promote]").forEach((btn) => {
+    btn.addEventListener("click", () => promoteCandidate(btn.dataset.promote));
+  });
+  document.querySelectorAll("#search-candidates [data-watch]").forEach((btn) => {
+    btn.addEventListener("click", () => reviewCandidate(btn.dataset.watch, "watch"));
+  });
+}
+
+function checkBadgeHtml(result) {
+  const map = {
+    pass: ["pass", "建议启用"],
+    needs_attention: ["warn", "需关注"],
+    not_recommended: ["bad", "不建议"],
+  };
+  const [cls, txt] = map[result] || ["", ""];
+  return cls ? `<span class="badge ${cls}">${txt}</span>` : "";
+}
+
+function priorityBadgeHtml(level) {
+  const map = { 高: "high", 中: "mid", 低: "low" };
+  return level ? `<span class="badge ${map[level] || ""}">${level}</span>` : "";
+}
+
+function candidateCard(c) {
+  const d = c.discovery || {};
+  const urls = (c.official_urls || []).join(" · ");
+  return `
+    <article class="candidate-card">
+      <header class="candidate-head">
+        <strong>${escapeHtml(c.display_name)}</strong>
+        ${checkBadgeHtml(d.check_result)} ${priorityBadgeHtml(d.priority_level)}
+        <span class="muted">${escapeHtml(c.region || "")} · ${escapeHtml(d.admin_level || "")}</span>
+      </header>
+      <div class="muted candidate-meta">${escapeHtml(urls)}</div>
+      <div class="candidate-score">
+        评分 <b>${d.priority_score ?? "-"}</b> · 样例 ${d.sample_policies?.length || 0} 篇 ·
+        命中 ${escapeHtml((d.keywords || []).join("、") || "-")}
+      </div>
+      <div class="candidate-actions">
+        <button class="secondary-button" data-detail="${escapeHtml(c.source_id)}">展开详情</button>
+        <button class="primary-button" data-promote="${escapeHtml(c.source_id)}">确认启用</button>
+        <button class="ghost-button" data-watch="${escapeHtml(c.source_id)}">标记关注</button>
+      </div>
+    </article>`;
+}
+
+async function openSearchDetail(id) {
+  try {
+    const c = await api(`/api/discovery/candidates/${encodeURIComponent(id)}`);
+    const d = c.discovery || {};
+    const breakdown = (d.score_breakdown || [])
+      .map(
+        (b) =>
+          `<li>${escapeHtml(b.dimension)}: <b>${b.score}</b>/${b.max ?? "-"} <span class="muted">${escapeHtml(b.reason || "")}</span></li>`,
+      )
+      .join("");
+    const samples = (d.sample_policies || [])
+      .map(
+        (p) =>
+          `<li><a class="text-link" href="${escapeHtml(p.url)}" target="_blank" rel="noreferrer">${escapeHtml(p.title)}</a> <span class="muted">命中 ${escapeHtml((p.matched_keywords || []).join("、"))}</span></li>`,
+      )
+      .join("");
+    document.querySelector("#search-detail-title").textContent = c.display_name || id;
+    document.querySelector("#search-detail-content").innerHTML = `
+      <section class="detail-block">
+        <h3>核查报告</h3>
+        <pre>${escapeHtml(JSON.stringify(d.check_details || {}, null, 2))}</pre>
+        <p>结论：${checkBadgeHtml(d.check_result)} 建议：${escapeHtml(d.recommendation || "-")}</p>
+      </section>
+      <section class="detail-block">
+        <h3>评分要素</h3>
+        <ul>${breakdown || '<li class="muted">无</li>'}</ul>
+        <p>总分 <b>${d.priority_score ?? "-"}</b> · ${priorityBadgeHtml(d.priority_level)}</p>
+      </section>
+      <section class="detail-block">
+        <h3>样例政策</h3>
+        <ul>${samples || '<li class="muted">无</li>'}</ul>
+      </section>
+      <div class="candidate-actions">
+        <button class="primary-button" data-promote="${escapeHtml(id)}">确认启用</button>
+        <button class="ghost-button" data-reject="${escapeHtml(id)}">驳回</button>
+        <button class="ghost-button" data-watch="${escapeHtml(id)}">标记关注</button>
+      </div>`;
+    document.querySelector("#search-detail-modal").showModal();
+    document
+      .querySelectorAll("#search-detail-content [data-promote]")
+      .forEach((btn) =>
+        btn.addEventListener("click", () => promoteCandidate(btn.dataset.promote)),
+      );
+    document
+      .querySelectorAll("#search-detail-content [data-reject]")
+      .forEach((btn) =>
+        btn.addEventListener("click", () => reviewCandidate(btn.dataset.reject, "reject")),
+      );
+    document
+      .querySelectorAll("#search-detail-content [data-watch]")
+      .forEach((btn) =>
+        btn.addEventListener("click", () => reviewCandidate(btn.dataset.watch, "watch")),
+      );
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
+function closeSearchDetail() {
+  document.querySelector("#search-detail-modal").close();
+}
+
+async function promoteCandidate(id) {
+  try {
+    const c = await api(`/api/discovery/candidates/${encodeURIComponent(id)}`);
+    const result = c.discovery?.check_result;
+    let override = false;
+    if (result === "not_recommended") {
+      if (!confirm("该信源为「不建议启用」，确认强制提升？")) return;
+      override = true;
+    }
+    await api(`/api/discovery/candidates/${encodeURIComponent(id)}/promote`, {
+      method: "POST",
+      body: JSON.stringify({ reviewer: "admin", override_not_recommended: override }),
+    });
+    notify(`信源 ${id} 已确认启用，01 信源编辑可见。`);
+    closeSearchDetail();
+    await loadSearchCandidates();
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
+async function reviewCandidate(id, action) {
+  try {
+    const reason = action === "reject" ? prompt("驳回原因") : null;
+    if (action === "reject" && !reason) return;
+    await api(`/api/discovery/candidates/${encodeURIComponent(id)}/review`, {
+      method: "POST",
+      body: JSON.stringify({ action, reason, reviewer: "admin" }),
+    });
+    notify(action === "reject" ? `信源 ${id} 已驳回` : `信源 ${id} 已标记关注`);
+    closeSearchDetail();
+    await loadSearchCandidates();
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
+async function startSearch() {
+  try {
+    const keywords = document.querySelector("#search-keywords").value;
+    const portals = document.querySelector("#search-portals").value;
+    await api("/api/discovery/search", {
+      method: "POST",
+      body: JSON.stringify({ keywords, portals }),
+    });
+    notify("信源搜索任务已启动，完成后自动刷新候选。");
+    renderSearchProgress();
+  } catch (error) {
+    notify(error.message, true);
+  }
+}
+
+function renderSearchProgress() {
+  const box = document.querySelector("#search-progress");
+  if (!box) return;
+  const searchJobs = (state.jobs || []).filter((j) => j.label && j.label.startsWith("信源搜索"));
+  if (!searchJobs.length) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    delete box.dataset.refreshed;
+    return;
+  }
+  const job = searchJobs[0];
+  const labels = {
+    running: "运行中",
+    success: "已完成",
+    warning: "完成但有错误",
+    failed: "任务失败",
+  };
+  box.classList.remove("hidden");
+  box.innerHTML = `<span class="stat-pill">搜索任务 ${labels[job.status] || job.status}<strong>${formatTime(job.started_at)}</strong></span>`;
+  const refreshed = (box.dataset.refreshed || "").split(",");
+  if (job.status !== "running" && !refreshed.includes(job.job_id)) {
+    box.dataset.refreshed = [...refreshed, job.job_id].filter(Boolean).join(",");
+    loadSearchCandidates();
+  }
+}
+
 async function refreshAll() {
   try {
     await Promise.all([loadSummary(), loadSources(), loadJobs(), loadPrompts()]);
@@ -916,6 +1141,13 @@ document.querySelector("#close-document-modal").addEventListener("click", () => 
 document.querySelector("#document-modal").addEventListener("click", (event) => {
   if (event.target.id === "document-modal") event.target.close();
 });
+document.querySelector("#search-start-btn").addEventListener("click", () => {
+  startSearch().catch((error) => notify(error.message, true));
+});
+document.querySelector("#close-search-detail-modal").addEventListener("click", closeSearchDetail);
+document.querySelector("#search-detail-modal").addEventListener("click", (event) => {
+  if (event.target.id === "search-detail-modal") event.target.close();
+});
 document.querySelector("#sidebar-toggle").addEventListener("click", () => {
   const collapsed = document.body.classList.toggle("sidebar-collapsed");
   const toggle = document.querySelector("#sidebar-toggle");
@@ -945,6 +1177,7 @@ window.setInterval(async () => {
   try {
     await loadJobs();
     await loadSummary();
+    if (document.querySelector("#page-search.active")) renderSearchProgress();
   } catch {
     // A transient refresh error is surfaced on the next explicit action.
   }

@@ -15,6 +15,7 @@ data/raw/
 data/normalized/
 data/state/
 data/ui_jobs/
+data/discovery/
 
 *.log
 *.sqlite3

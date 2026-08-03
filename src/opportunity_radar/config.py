@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
-from opportunity_radar.compliance import ComplianceAuditSnapshot
+from opportunity_radar.compliance import ORIGINS, ComplianceAuditSnapshot
 
 
 @dataclass(frozen=True)
@@ -18,12 +18,15 @@ class SourceConfig:
     enabled: bool = True
     request_interval_seconds: float = 1.0
     adapter_version: str = "unregistered"
+    origin: str = "manual"  # manual | discovery
 
     def __post_init__(self) -> None:
         if type(self.enabled) is not bool:
             raise ValueError("enabled must be a JSON boolean")
         if not isinstance(self.adapter_version, str) or not self.adapter_version.strip():
             raise ValueError("adapter_version must be a nonempty string")
+        if self.origin not in ORIGINS:
+            raise ValueError(f"origin must be one of {sorted(ORIGINS)}")
 
 
 @dataclass(frozen=True)
@@ -77,6 +80,7 @@ def load_sources(path: Path) -> dict[str, SourceConfig]:
             enabled=enabled,
             request_interval_seconds=float(item.get("request_interval_seconds", 1.0)),
             adapter_version=item.get("adapter_version", "unregistered"),
+            origin=item.get("origin", "manual"),
         )
         if source.source_id in sources:
             raise ValueError(f"duplicate source_id: {source.source_id}")

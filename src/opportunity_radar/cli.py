@@ -178,6 +178,37 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="reanalyze every document even if it was analyzed successfully before",
     )
+
+    search = subcommands.add_parser(
+        "search-sources",
+        help="基于关键词自动发现政府政策信源",
+    )
+    search.add_argument(
+        "--keywords",
+        default="all",
+        help="关键词标签，逗号分隔；all=全部",
+    )
+    search.add_argument(
+        "--portals",
+        default="all",
+        help="门户 ID，逗号分隔；all=全部",
+    )
+    search.add_argument(
+        "--mode",
+        default="direct-crawl",
+        choices=["direct-crawl"],
+    )
+    search.add_argument(
+        "--browser",
+        choices=("off", "fallback"),
+        default="fallback",
+        help="JS 渲染回退：HTTP 抓不到时用 Playwright 渲染（fallback），或关闭（off）",
+    )
+    search.add_argument(
+        "--headed",
+        action="store_true",
+        help="显示浏览器窗口，用于调试 JS 渲染",
+    )
     return parser
 
 
@@ -221,7 +252,49 @@ def _analysis_inputs() -> tuple[dict[str, str], list[str]]:
     return valid_codes, business_tags
 
 
-def main(argv: Sequence[str] | None = None) -> None:
+def build_orchestrator(browser=None):
+    import httpx
+
+    from opportunity_radar.discovery.checker import ComplianceChecker
+    from opportunity_radar.discovery.crawler import PortalCrawler
+    from opportunity_radar.discovery.keywords import FallbackKeywordSource
+    from opportunity_radar.discovery.orchestrator import DiscoveryOrchestrator
+    from opportunity_radar.discovery.scorer import ImportanceScorer
+
+    return DiscoveryOrchestrator(
+        PortalCrawler(httpx.Client(timeout=30.0), browser=browser),
+        ComplianceChecker(),
+        ImportanceScorer(),
+        FallbackKeywordSource(),
+    )
+
+
+def cmd_search_sources(args) -> int:
+    browser = None
+    if args.browser != "off":
+        from opportunity_radar.browser import PlaywrightCollector
+
+        browser = PlaywrightCollector(headless=not args.headed, max_pages=20)
+    try:
+        orch = build_orchestrator(browser=browser)
+        tags = None if args.keywords == "all" else args.keywords.split(",")
+        ids = None if args.portals == "all" else args.portals.split(",")
+        report = orch.run(keyword_tags=tags, portal_ids=ids, mode=args.mode)
+    except (KeyError, OSError, TypeError, ValueError) as error:
+        print(f"search-sources failed: {error}", file=sys.stderr)
+        return 1
+    finally:
+        if browser is not None:
+            browser.close()
+    print(f"Report: data/discovery/{report.job_id}-report.json")
+    print(
+        f"discovery job={report.job_id} candidates={len(report.candidates)} "
+        f"restricted={report.stats.get('restricted_stopped', 0)}"
+    )
+    return 0
+
+
+def main(argv: Sequence[str] | None = None) -> int | None:
     configure_logging()
     parser = _parser()
     args = parser.parse_args(argv)
@@ -260,6 +333,9 @@ def main(argv: Sequence[str] | None = None) -> None:
         )
         print(f"Workbook: {workbook}\nReport: {report}")
         return
+
+    if args.command == "search-sources":
+        return cmd_search_sources(args)
 
     try:
         configured = load_sources(Path("config/sources.json"))
