@@ -118,5 +118,791 @@
       "取得接口授权",
       "记录官方限频规则"
     ]
+  },
+  {
+    "source_id": "gov_cn",
+    "display_name": "中国政府网政策",
+    "region": "国家",
+    "phase": "verified",
+    "enabled": true,
+    "official_urls": [
+      "https://www.gov.cn/zhengce/zuixin/"
+    ],
+    "origin": "discovery",
+    "discovery": {
+      "keywords": [
+        "意见",
+        "方案",
+        "规划",
+        "通知"
+      ],
+      "discovered_at": "2026-08-03",
+      "portal_seed_id": "gov_cn",
+      "admin_level": "国家",
+      "sample_policies": [
+        {
+          "title": "国务院关于印发《知识产权保护和运用“十五五”规划》的通知",
+          "url": "https://www.gov.cn/zhengce/content/202607/content_7077199.htm",
+          "matched_keywords": [
+            "规划",
+            "通知",
+            "方案",
+            "意见"
+          ]
+        },
+        {
+          "title": "中共中央 国务院转发《中央宣传部、司法部关于开展法治宣传教育的第九个五年规划（2026－2030年）》",
+          "url": "https://www.gov.cn/zhengce/202607/content_7076696.htm",
+          "matched_keywords": [
+            "规划",
+            "通知",
+            "方案",
+            "意见"
+          ]
+        },
+        {
+          "title": "国办印发《关于国务院行政复议案件处理程序的若干规定》的通知",
+          "url": "https://www.gov.cn/zhengce/content/202607/content_7076684.htm",
+          "matched_keywords": [
+            "规划",
+            "通知",
+            "方案",
+            "意见"
+          ]
+        },
+        {
+          "title": "中共中央 国务院印发《关于加强新时代社会工作的意见》",
+          "url": "https://www.gov.cn/zhengce/202607/content_7076433.htm",
+          "matched_keywords": [
+            "规划",
+            "通知",
+            "方案",
+            "意见"
+          ]
+        },
+        {
+          "title": "国务院关于印发《全民健身计划（2026—2030年）》的通知",
+          "url": "https://www.gov.cn/zhengce/content/202607/content_7076420.htm",
+          "matched_keywords": [
+            "规划",
+            "通知",
+            "方案",
+            "意见"
+          ]
+        }
+      ],
+      "snapshots": [
+        "data\\discovery\\snapshots\\gov_cn\\1785737718.html"
+      ],
+      "check_result": "pass",
+      "check_details": {
+        "domain_owner": "gov",
+        "accessibility": {
+          "status_code": 200,
+          "public": true,
+          "headers": {
+            "retry_after": null,
+            "rate_limit_header": null
+          }
+        },
+        "login_required": false,
+        "captcha_triggered": false,
+        "robots": {
+          "allowed": true,
+          "raw": "﻿User-agent: * \r\nAllow: /1\r\nSitemap:http://www.gov.cn/baidu.xml \r\nSitemap:http://www.gov.cn/google.xml\r\nSitemap:http://www.gov.cn/bing.xml\r\nSitemap:http://www.gov.cn/sogou.xml\r\nDisallow:/2016gov/\r\nDisallow:/2016shuju/\r\nDisallow:/2016guoqing/\r\nDisallow:/2016zhengce/\r\nDisallow:/2016hudong/\r\nDisallow:/2016fuwu/\r\nDisallow:/2016xinwen/\r\nDisallow:/premier/\r\nDisallow:/2016guowuyuan/\r\nDisallow:/2016public/\r\nDisallow:/2016ducha/\r\nDisallow:/guowuyuan/yangjing/\r\nDisallow:/guowuyuan/yj.htm\r\nDisallow:/c16629/gwyld_yj.htm\r\nDisallow:/guowuyuan/yj_hy.htm\r\nDisallow:/guoqing/2013-03/16/content_2583121.htm\r\nDisallow:/guowuyuan/2015-12/24/content_5027563.htm\r\nDisallow:/zhuanti/2014-04/02/content_2823336.htm\r\nDisallow:/zmyw201202b/\r\nDisallow:/zmyw201212c/\r\nDisallow:/ldhd/wjb/tp.htm\r\nDisallow:/guowuyuan/zl_gallery03.htm"
+        },
+        "rate_limit_hints": {
+          "retry_after": null,
+          "rate_limit_header": null
+        },
+        "column_structure": {
+          "list_page": true,
+          "detail_page": true,
+          "sample_count": 5
+        }
+      },
+      "recommendation": "建议启用",
+      "priority_score": 60,
+      "priority_level": "中",
+      "score_breakdown": [
+        {
+          "dimension": "行政层级",
+          "score": 30,
+          "max": 30,
+          "reason": "国家级信源 +30"
+        },
+        {
+          "dimension": "行业相关性",
+          "score": 5,
+          "max": 25,
+          "reason": "非金融 +5"
+        },
+        {
+          "dimension": "融资信号密度",
+          "score": 5,
+          "max": 20,
+          "reason": "样例密度 0%（低）+5"
+        },
+        {
+          "dimension": "政策更新频率",
+          "score": 5,
+          "max": 10,
+          "reason": "中频（月更）+5"
+        },
+        {
+          "dimension": "合规可采集性",
+          "score": 10,
+          "max": 10,
+          "reason": "pass +10"
+        },
+        {
+          "dimension": "域名权威性",
+          "score": 5,
+          "max": 5,
+          "reason": "gov.cn 官方 +5"
+        }
+      ]
+    },
+    "verified_at": "2026-08-03",
+    "owner": "admin"
+  },
+  {
+    "source_id": "miit_disc",
+    "display_name": "工信部政策发现",
+    "region": "国家",
+    "phase": "verified",
+    "enabled": true,
+    "official_urls": [
+      "https://www.miit.gov.cn/zwgk/zcwj/index.html"
+    ],
+    "origin": "discovery",
+    "discovery": {
+      "keywords": [
+        "公告",
+        "公示",
+        "办法",
+        "意见",
+        "新能源",
+        "方案",
+        "智能制造",
+        "规划",
+        "通知"
+      ],
+      "discovered_at": "2026-08-03",
+      "portal_seed_id": "miit_disc",
+      "admin_level": "国家",
+      "sample_policies": [
+        {
+          "title": "文件公示",
+          "url": "https://www.miit.gov.cn/zwgk/wjgs/index.html",
+          "matched_keywords": [
+            "通知",
+            "公告",
+            "新能源",
+            "办法",
+            "规划",
+            "公示",
+            "意见",
+            "智能制造",
+            "方案"
+          ]
+        },
+        {
+          "title": "工业和信息化部关于印发《工业绿色低碳发展“十五五”规划》的通知",
+          "url": "https://www.miit.gov.cn/zwgk/zcwj/wjfb/tz/art/2026/art_c46889040a4e48629dc3a60b0e137d25.html",
+          "matched_keywords": [
+            "通知",
+            "公告",
+            "新能源",
+            "办法",
+            "规划",
+            "公示",
+            "意见",
+            "智能制造",
+            "方案"
+          ]
+        },
+        {
+          "title": "中华人民共和国工业和信息化部公告2026年第20号",
+          "url": "https://www.miit.gov.cn/zwgk/zcwj/wjfb/gg/art/2026/art_d6dfb1c5c48e4f7e92aa27c47aa53a1c.html",
+          "matched_keywords": [
+            "通知",
+            "公告",
+            "新能源",
+            "办法",
+            "规划",
+            "公示",
+            "意见",
+            "智能制造",
+            "方案"
+          ]
+        },
+        {
+          "title": "工业和信息化部等七部门办公厅（办公室）关于开展2026年工业和信息化领域\n创新任务揭榜挂帅工作的通知",
+          "url": "https://www.miit.gov.cn/zwgk/zcwj/wjfb/tz/art/2026/art_286751ceaf944364b5c282cacd71cb09.html",
+          "matched_keywords": [
+            "通知",
+            "公告",
+            "新能源",
+            "办法",
+            "规划",
+            "公示",
+            "意见",
+            "智能制造",
+            "方案"
+          ]
+        },
+        {
+          "title": "工业和信息化部办公厅关于印发《“小快轻准” 数字化产品和服务培育指引（2026年版）》的通知",
+          "url": "https://www.miit.gov.cn/zwgk/zcwj/wjfb/tz/art/2026/art_067d45af14c242f2a4c03f94d5c9b399.html",
+          "matched_keywords": [
+            "通知",
+            "公告",
+            "新能源",
+            "办法",
+            "规划",
+            "公示",
+            "意见",
+            "智能制造",
+            "方案"
+          ]
+        }
+      ],
+      "snapshots": [
+        "data\\discovery\\snapshots\\miit_disc\\1785737726.html"
+      ],
+      "check_result": "not_recommended",
+      "check_details": {
+        "domain_owner": "gov",
+        "accessibility": {
+          "status_code": 403,
+          "public": false,
+          "headers": {
+            "retry_after": null,
+            "rate_limit_header": null
+          }
+        },
+        "login_required": false,
+        "captcha_triggered": false,
+        "robots": {
+          "allowed": true,
+          "raw": "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\" />\n<style>\nbody{ background:#eff1f0; font-family: microsoft yahei; color:#969696; font-size:12px;}\n.online-desc-con { text-align:center; }\n.r-tip01 { color: #969696; font-size: 16px; display: block; text-align: center; width: 600px; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; margin: 0 auto 15px; }\n.r-tip02 { color: #b1b0b0; font-size: 12px; display: block; margin-top: 20px; margin-bottom: 20px; }\n.r-tip02 a:visited { text-decoration: underline; color: #0088CC; }\n.r-tip02 a:link { text-decoration: underline; color: #0088CC; }\nimg { border: 0; }\n</style>\n</head>\n<body>\n<div class=\"online-desc-con\" style=\"width:650px;padding-top:15px;margin:34px auto;\">\n    <a id=\"official_site\" href=\"http://www.365cyd.com\" target=\"_blank\">\n        <img id=\"wafblock\" alt=\"\" style=\"margin: 0 auto 17px auto;\" />\n    </a>\n    <span class=\"r-tip01\" id=\"error_403\"></span>\n    <span class=\"r-tip01\" id=\"error_403_en\"></span>\n    <span class=\"r-tip02\">如果您是网站管理员<a href=\"http://help.365cyd.com/cyd-error-help.html?code=403\" target=\"_blank\">点击这里</a>查看详情</span>\n    <hr/>\n    <center>client: <span id=\"client_ip\"></span>, server: 15523ef, time: <span id=\"time_error\"></span><span id=\"rule_id\"></span></center>\n    <img alt=\"\" src=\"/cdn-cgi/image/logo.png\" />\n</div>\n<script>\n    void(function fuckie6(){if(location.hash && /MSIE 6/.test(navigator.userAgent) && !/jsl_sec/.test(location.href)){location.href = location.href.split('#')[0] + '&jsl_sec' + location.hash}})();\n    var data = {\"client_ip\":\"183.137.37.3\",\"time_error\":\"03\\/Aug\\/2026:14:15:27 +0800\",\"error_403_type\":\"cli_ip\",\"error_403_en\":\"\",\"error_403\":\"您的IP最近有可疑的攻击行为，请稍后重试.\"};\n    var rule_id = parseInt(data['rule_id']) || '';\n    if (rule_id != '') {\n        rule_id = '[' + rule_id + ']';\n    }\n    document.getElementById(\"wafblock\").src = '/cdn-cgi/image/' + (data['error_403_type'] || 'hacker') + '.png';\n    document.getElementById('error_403').innerText = data['error_403'] || '当前访问疑似黑客攻击，已被创宇盾拦截。';\n    document.getElementById('error_403_en').innerText = data['error_403_en'];\n    document.getElementById('client_ip').innerText = data['client_ip'];\n    document.getElementById('time_error').innerText = data['time_error'];\n    document.getElementById('rule_id').innerText = rule_id;\n</script>\n</body>\n</html>\n"
+        },
+        "rate_limit_hints": {
+          "retry_after": null,
+          "rate_limit_header": null
+        },
+        "column_structure": {
+          "list_page": true,
+          "detail_page": true,
+          "sample_count": 5
+        }
+      },
+      "recommendation": "不建议",
+      "priority_score": 50,
+      "priority_level": "低",
+      "score_breakdown": [
+        {
+          "dimension": "行政层级",
+          "score": 30,
+          "max": 30,
+          "reason": "国家级信源 +30"
+        },
+        {
+          "dimension": "行业相关性",
+          "score": 5,
+          "max": 25,
+          "reason": "非金融 +5"
+        },
+        {
+          "dimension": "融资信号密度",
+          "score": 5,
+          "max": 20,
+          "reason": "样例密度 0%（低）+5"
+        },
+        {
+          "dimension": "政策更新频率",
+          "score": 5,
+          "max": 10,
+          "reason": "中频（月更）+5"
+        },
+        {
+          "dimension": "合规可采集性",
+          "score": 0,
+          "max": 10,
+          "reason": "not_recommended +0"
+        },
+        {
+          "dimension": "域名权威性",
+          "score": 5,
+          "max": 5,
+          "reason": "gov.cn 官方 +5"
+        }
+      ]
+    },
+    "verified_at": "2026-08-03",
+    "owner": "admin",
+    "verification_notes": "override not_recommended; "
+  },
+  {
+    "source_id": "zj_gov",
+    "display_name": "浙江省政府政策",
+    "region": "浙江",
+    "phase": "verified",
+    "enabled": true,
+    "official_urls": [
+      "https://www.zj.gov.cn/"
+    ],
+    "origin": "discovery",
+    "discovery": {
+      "keywords": [
+        "公告",
+        "公示",
+        "意见",
+        "细则",
+        "规划",
+        "通知"
+      ],
+      "discovered_at": "2026-08-03",
+      "portal_seed_id": "zj_gov",
+      "admin_level": "省",
+      "sample_policies": [
+        {
+          "title": "省委常委会召开会议 认真学习贯彻习近平总书记重要讲话重要指示精神 研究我省贯彻落实意见 省委书记王浩主持2026-08-03",
+          "url": "https://www.zj.gov.cn/col/col1229823372/art/2026/art_7dfbfb59864149d5a4962d88baf66ed7.html",
+          "matched_keywords": [
+            "通知",
+            "公告",
+            "细则",
+            "规划",
+            "公示",
+            "意见"
+          ]
+        },
+        {
+          "title": "公示公告",
+          "url": "https://www.zj.gov.cn/col/col1545696/index.html",
+          "matched_keywords": [
+            "通知",
+            "公告",
+            "细则",
+            "规划",
+            "公示",
+            "意见"
+          ]
+        },
+        {
+          "title": "政策解读",
+          "url": "https://www.zj.gov.cn/col/col1229667607/index.html",
+          "matched_keywords": [
+            "通知",
+            "公告",
+            "细则",
+            "规划",
+            "公示",
+            "意见"
+          ]
+        },
+        {
+          "title": "关于中央第九生态环境保护督察组作风纪律监督举报方式的公告",
+          "url": "https://www.zj.gov.cn/col/col1545696/art/2025/art_3a46f793865158684d6ff9490d8ae77c.html",
+          "matched_keywords": [
+            "通知",
+            "公告",
+            "细则",
+            "规划",
+            "公示",
+            "意见"
+          ]
+        },
+        {
+          "title": "关于中央第九生态环境保护督察组作风纪律监督举报方式的公告",
+          "url": "https://www.zj.gov.cn/col/col1545696/art/2025/art_3a46f793865158684d6ff9490d8ae77c.html",
+          "matched_keywords": [
+            "通知",
+            "公告",
+            "细则",
+            "规划",
+            "公示",
+            "意见"
+          ]
+        }
+      ],
+      "snapshots": [
+        "data\\discovery\\snapshots\\zj_gov\\1785737729.html"
+      ],
+      "check_result": "pass",
+      "check_details": {
+        "domain_owner": "gov",
+        "accessibility": {
+          "status_code": 200,
+          "public": true,
+          "headers": {
+            "retry_after": null,
+            "rate_limit_header": null
+          }
+        },
+        "login_required": false,
+        "captcha_triggered": false,
+        "robots": {
+          "allowed": true,
+          "raw": "<html>\r\n<head><title>404 Not Found</title></head>\r\n<body>\r\n<center><h1>404 Not Found</h1></center>\r\n<hr><center>openresty</center>\r\n</body>\r\n</html>\r\n"
+        },
+        "rate_limit_hints": {
+          "retry_after": null,
+          "rate_limit_header": null
+        },
+        "column_structure": {
+          "list_page": true,
+          "detail_page": true,
+          "sample_count": 5
+        }
+      },
+      "recommendation": "建议启用",
+      "priority_score": 50,
+      "priority_level": "低",
+      "score_breakdown": [
+        {
+          "dimension": "行政层级",
+          "score": 20,
+          "max": 30,
+          "reason": "省级信源 +20"
+        },
+        {
+          "dimension": "行业相关性",
+          "score": 5,
+          "max": 25,
+          "reason": "非金融 +5"
+        },
+        {
+          "dimension": "融资信号密度",
+          "score": 5,
+          "max": 20,
+          "reason": "样例密度 0%（低）+5"
+        },
+        {
+          "dimension": "政策更新频率",
+          "score": 5,
+          "max": 10,
+          "reason": "中频（月更）+5"
+        },
+        {
+          "dimension": "合规可采集性",
+          "score": 10,
+          "max": 10,
+          "reason": "pass +10"
+        },
+        {
+          "dimension": "域名权威性",
+          "score": 5,
+          "max": 5,
+          "reason": "gov.cn 官方 +5"
+        }
+      ]
+    },
+    "verified_at": "2026-08-03",
+    "owner": "admin"
+  },
+  {
+    "source_id": "gov_cn",
+    "display_name": "中国政府网政策",
+    "region": "国家",
+    "phase": "candidate",
+    "enabled": false,
+    "official_urls": [
+      "https://www.gov.cn/zhengce/zuixin/"
+    ],
+    "origin": "discovery",
+    "discovery": {
+      "keywords": [
+        "意见",
+        "方案",
+        "规划",
+        "通知"
+      ],
+      "discovered_at": "2026-08-03",
+      "portal_seed_id": "gov_cn",
+      "admin_level": "国家",
+      "sample_policies": [
+        {
+          "title": "国务院关于印发《知识产权保护和运用“十五五”规划》的通知",
+          "url": "https://www.gov.cn/zhengce/content/202607/content_7077199.htm",
+          "matched_keywords": [
+            "规划",
+            "意见",
+            "方案",
+            "通知"
+          ]
+        },
+        {
+          "title": "中共中央 国务院转发《中央宣传部、司法部关于开展法治宣传教育的第九个五年规划（2026－2030年）》",
+          "url": "https://www.gov.cn/zhengce/202607/content_7076696.htm",
+          "matched_keywords": [
+            "规划",
+            "意见",
+            "方案",
+            "通知"
+          ]
+        },
+        {
+          "title": "国办印发《关于国务院行政复议案件处理程序的若干规定》的通知",
+          "url": "https://www.gov.cn/zhengce/content/202607/content_7076684.htm",
+          "matched_keywords": [
+            "规划",
+            "意见",
+            "方案",
+            "通知"
+          ]
+        },
+        {
+          "title": "中共中央 国务院印发《关于加强新时代社会工作的意见》",
+          "url": "https://www.gov.cn/zhengce/202607/content_7076433.htm",
+          "matched_keywords": [
+            "规划",
+            "意见",
+            "方案",
+            "通知"
+          ]
+        },
+        {
+          "title": "国务院关于印发《全民健身计划（2026—2030年）》的通知",
+          "url": "https://www.gov.cn/zhengce/content/202607/content_7076420.htm",
+          "matched_keywords": [
+            "规划",
+            "意见",
+            "方案",
+            "通知"
+          ]
+        }
+      ],
+      "snapshots": [
+        "data\\discovery\\snapshots\\gov_cn\\1785737782.html"
+      ],
+      "check_result": "pass",
+      "check_details": {
+        "domain_owner": "gov",
+        "accessibility": {
+          "status_code": 200,
+          "public": true,
+          "headers": {
+            "retry_after": null,
+            "rate_limit_header": null
+          }
+        },
+        "login_required": false,
+        "captcha_triggered": false,
+        "robots": {
+          "allowed": true,
+          "raw": "﻿User-agent: * \r\nAllow: /1\r\nSitemap:http://www.gov.cn/baidu.xml \r\nSitemap:http://www.gov.cn/google.xml\r\nSitemap:http://www.gov.cn/bing.xml\r\nSitemap:http://www.gov.cn/sogou.xml\r\nDisallow:/2016gov/\r\nDisallow:/2016shuju/\r\nDisallow:/2016guoqing/\r\nDisallow:/2016zhengce/\r\nDisallow:/2016hudong/\r\nDisallow:/2016fuwu/\r\nDisallow:/2016xinwen/\r\nDisallow:/premier/\r\nDisallow:/2016guowuyuan/\r\nDisallow:/2016public/\r\nDisallow:/2016ducha/\r\nDisallow:/guowuyuan/yangjing/\r\nDisallow:/guowuyuan/yj.htm\r\nDisallow:/c16629/gwyld_yj.htm\r\nDisallow:/guowuyuan/yj_hy.htm\r\nDisallow:/guoqing/2013-03/16/content_2583121.htm\r\nDisallow:/guowuyuan/2015-12/24/content_5027563.htm\r\nDisallow:/zhuanti/2014-04/02/content_2823336.htm\r\nDisallow:/zmyw201202b/\r\nDisallow:/zmyw201212c/\r\nDisallow:/ldhd/wjb/tp.htm\r\nDisallow:/guowuyuan/zl_gallery03.htm"
+        },
+        "rate_limit_hints": {
+          "retry_after": null,
+          "rate_limit_header": null
+        },
+        "column_structure": {
+          "list_page": true,
+          "detail_page": true,
+          "sample_count": 5
+        }
+      },
+      "recommendation": "建议启用",
+      "priority_score": 60,
+      "priority_level": "中",
+      "score_breakdown": [
+        {
+          "dimension": "行政层级",
+          "score": 30,
+          "max": 30,
+          "reason": "国家级信源 +30"
+        },
+        {
+          "dimension": "行业相关性",
+          "score": 5,
+          "max": 25,
+          "reason": "非金融 +5"
+        },
+        {
+          "dimension": "融资信号密度",
+          "score": 5,
+          "max": 20,
+          "reason": "样例密度 0%（低）+5"
+        },
+        {
+          "dimension": "政策更新频率",
+          "score": 5,
+          "max": 10,
+          "reason": "中频（月更）+5"
+        },
+        {
+          "dimension": "合规可采集性",
+          "score": 10,
+          "max": 10,
+          "reason": "pass +10"
+        },
+        {
+          "dimension": "域名权威性",
+          "score": 5,
+          "max": 5,
+          "reason": "gov.cn 官方 +5"
+        }
+      ]
+    }
+  },
+  {
+    "source_id": "zj_gov",
+    "display_name": "浙江省政府政策",
+    "region": "浙江",
+    "phase": "candidate",
+    "enabled": false,
+    "official_urls": [
+      "https://www.zj.gov.cn/"
+    ],
+    "origin": "discovery",
+    "discovery": {
+      "keywords": [
+        "公告",
+        "公示",
+        "意见",
+        "细则",
+        "规划",
+        "通知"
+      ],
+      "discovered_at": "2026-08-03",
+      "portal_seed_id": "zj_gov",
+      "admin_level": "省",
+      "sample_policies": [
+        {
+          "title": "省委常委会召开会议 认真学习贯彻习近平总书记重要讲话重要指示精神 研究我省贯彻落实意见 省委书记王浩主持2026-08-03",
+          "url": "https://www.zj.gov.cn/col/col1229823372/art/2026/art_7dfbfb59864149d5a4962d88baf66ed7.html",
+          "matched_keywords": [
+            "细则",
+            "公告",
+            "规划",
+            "公示",
+            "意见",
+            "通知"
+          ]
+        },
+        {
+          "title": "公示公告",
+          "url": "https://www.zj.gov.cn/col/col1545696/index.html",
+          "matched_keywords": [
+            "细则",
+            "公告",
+            "规划",
+            "公示",
+            "意见",
+            "通知"
+          ]
+        },
+        {
+          "title": "政策解读",
+          "url": "https://www.zj.gov.cn/col/col1229667607/index.html",
+          "matched_keywords": [
+            "细则",
+            "公告",
+            "规划",
+            "公示",
+            "意见",
+            "通知"
+          ]
+        },
+        {
+          "title": "关于中央第九生态环境保护督察组作风纪律监督举报方式的公告",
+          "url": "https://www.zj.gov.cn/col/col1545696/art/2025/art_3a46f793865158684d6ff9490d8ae77c.html",
+          "matched_keywords": [
+            "细则",
+            "公告",
+            "规划",
+            "公示",
+            "意见",
+            "通知"
+          ]
+        },
+        {
+          "title": "关于中央第九生态环境保护督察组作风纪律监督举报方式的公告",
+          "url": "https://www.zj.gov.cn/col/col1545696/art/2025/art_3a46f793865158684d6ff9490d8ae77c.html",
+          "matched_keywords": [
+            "细则",
+            "公告",
+            "规划",
+            "公示",
+            "意见",
+            "通知"
+          ]
+        }
+      ],
+      "snapshots": [
+        "data\\discovery\\snapshots\\zj_gov\\1785737787.html"
+      ],
+      "check_result": "pass",
+      "check_details": {
+        "domain_owner": "gov",
+        "accessibility": {
+          "status_code": 200,
+          "public": true,
+          "headers": {
+            "retry_after": null,
+            "rate_limit_header": null
+          }
+        },
+        "login_required": false,
+        "captcha_triggered": false,
+        "robots": {
+          "allowed": true,
+          "raw": "<html>\r\n<head><title>404 Not Found</title></head>\r\n<body>\r\n<center><h1>404 Not Found</h1></center>\r\n<hr><center>openresty</center>\r\n</body>\r\n</html>\r\n"
+        },
+        "rate_limit_hints": {
+          "retry_after": null,
+          "rate_limit_header": null
+        },
+        "column_structure": {
+          "list_page": true,
+          "detail_page": true,
+          "sample_count": 5
+        }
+      },
+      "recommendation": "建议启用",
+      "priority_score": 50,
+      "priority_level": "低",
+      "score_breakdown": [
+        {
+          "dimension": "行政层级",
+          "score": 20,
+          "max": 30,
+          "reason": "省级信源 +20"
+        },
+        {
+          "dimension": "行业相关性",
+          "score": 5,
+          "max": 25,
+          "reason": "非金融 +5"
+        },
+        {
+          "dimension": "融资信号密度",
+          "score": 5,
+          "max": 20,
+          "reason": "样例密度 0%（低）+5"
+        },
+        {
+          "dimension": "政策更新频率",
+          "score": 5,
+          "max": 10,
+          "reason": "中频（月更）+5"
+        },
+        {
+          "dimension": "合规可采集性",
+          "score": 10,
+          "max": 10,
+          "reason": "pass +10"
+        },
+        {
+          "dimension": "域名权威性",
+          "score": 5,
+          "max": 5,
+          "reason": "gov.cn 官方 +5"
+        }
+      ]
+    }
   }
 ]
